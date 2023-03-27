@@ -1,5 +1,6 @@
 from game import Game
 
+#Player status constants
 WAITING, SENT_INVITE, RECEIVED_INVITE, PLAYING = 0, 1, 2, 3
 
 class Player:
