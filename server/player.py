@@ -12,6 +12,9 @@ class Player:
         self.game = None
 
     def invite(self, opponent):
+        if self.opponent != None:
+            self.opponent.status = WAITING
+            self.opponent.opponent = None
         self.status = SENT_INVITE
         self.opponent = opponent
         opponent.status = RECEIVED_INVITE

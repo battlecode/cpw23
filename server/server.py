@@ -5,6 +5,9 @@ from player import Player, WAITING, SENT_INVITE, RECEIVED_INVITE, PLAYING
 
 players = dict()
 
+async def respond(websocket, event, success):
+    await websocket.send(json.dumps({"type": event["type"], "success": success}))
+
 async def handle_player(player):
     websocket, username = player.websocket, player.username
     print("Logged in", username)
@@ -17,25 +20,30 @@ async def handle_player(player):
             continue
         
         if event["type"] == "create_invite":
-            if event["opponent"] in players:
+            #Check if given opponent exists and does not already have an invite
+            if event["opponent"] in players and players[event["opponent"]].status == WAITING:
                 opponent = players[event["opponent"]]
-                await websocket.send(json.dumps({"type": "create_invite", "success": True}))
+                await respond(websocket, event, True)
                 await opponent.websocket.send(json.dumps({"type": "send_invite", "user": username}))
                 player.invite(opponent)
-            else: await websocket.send(json.dumps({"type": "create_invite", "success": False}))
+            else: await respond(websocket, event, False)
         
         elif event["type"] == "invite_response":
+            #Check if the player has an invite to respond to
             if player.status == RECEIVED_INVITE:
+                await respond(websocket, event, True)
                 if event["accept"]: 
                     player.accept_game()
                     await websocket.send(json.dumps({"type": "start_game"}))
                     await player.opponent.websocket.send(json.dumps({"type": "start_game"}))
                 else: player.deny_game()
+            else: await respond(websocket, event, False)
 
         elif event["type"] == "turn":
             if player.status == PLAYING:
-                await websocket.send(json.dumps({"type": "turn", "success": True}))
-                await player.opponent.websocket.send(json.dumps({"type": "turn", "success": True}))
+                await respond(websocket, event, True)
+                await respond(player.opponent.websocket, event, False)
+            else: await respond(websocket, event, False)
 
 async def handler(websocket):
     player = None
@@ -49,11 +57,11 @@ async def handler(websocket):
         if event["type"] == "login":
             username = event["user"]
             if username in players:
-                await websocket.send(json.dumps({"type": "login", "success": False}))
+                await respond(websocket, event, False)
             else:
                 player = Player(websocket, username)
                 players[username] = player
-                await websocket.send(json.dumps({"type": "login", "success": True}))
+                await respond(websocket, event, True)
                 break
 
     try:
