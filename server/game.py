@@ -67,7 +67,7 @@ class Game:
             #First player is submitting their actions, so do nothing besides record them for now
             self.first_player_actions = actions
             self.status = P1_PLAYED if player_num == 1 else P2_PLAYED
-            return None
+            return [], []
         elif (self.status == P2_PLAYED and player_num == 1) or (self.status == P1_PLAYED and player_num == 2):
             #Second player is submitting their actions, so process game round
             p1_errors, p2_errors = self.process_turn(actions)

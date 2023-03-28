@@ -11,6 +11,7 @@ class Player:
         self.status = WAITING
         self.opponent = None
         self.game = None
+        self.player_num = 0
 
     def invite(self, opponent):
         if self.opponent != None:
@@ -26,8 +27,10 @@ class Player:
         game = Game()
         self.game = game
         self.status = PLAYING
+        self.player_num = 1
         self.opponent.game = game
         self.opponent.status = PLAYING
+        self.opponent.player_num = 2
 
     def deny_game(self):
         assert self.opponent != None
