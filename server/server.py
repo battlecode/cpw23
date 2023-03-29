@@ -17,9 +17,11 @@ async def process_create_invite(player, event):
 async def process_invite_response(player, websocket, event):
     if event["accept"]: 
         player.accept_game()
-        opponent = player.opponent
-        await websocket.send(json.dumps({"type": "start_game", "player_num": player.player_num}))
-        await opponent.websocket.send(json.dumps({"type": "start_game", "player_num": opponent.player_num}))
+        game = player.game
+        await websocket.send(
+            json.dumps({"type": "game_update", "p1": game.p1_bots, "p2": game.p2_bots, "errors": []}))
+        await player.opponent.websocket.send(
+            json.dumps({"type": "game_update", "p1": game.p1_bots, "p2": game.p2_bots, "errors": []}))
     else: player.deny_game()
 
 async def submit_turn(player, websocket, event):
@@ -49,6 +51,7 @@ async def handle_player(player):
             continue
         
         if event["type"] == "create_invite":
+            print('here!')
             #Check if given opponent exists and does not already have an invite
             if event["opponent"] in players and players[event["opponent"]].status == WAITING:
                 await respond(websocket, event, True)
@@ -117,7 +120,7 @@ Submit turn
 {
     "type": "turn", 
     "actions": [
-        {"type": "load/launch/shield", "target": number, "strength": number},
+        {"type": "none/load/launch/shield", "target": number, "strength": number},
         ...for each bot in order
     ]
 }
@@ -133,10 +136,7 @@ Send game invite
 Respond to game invite
 {"type": "invite_response", "success": true/false}
 
-Starting game
-{"type": "start_game", "player_num": number}
-
-Updated game state at end of turn
+Game state (sent when first starting game and after each complete turn)
 {
     "type": "game_update",
     "p1": [[bot 1 health, bot 1 ammo], [bot 2 health, bot 2 ammo]...]
