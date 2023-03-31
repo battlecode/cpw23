@@ -61,11 +61,11 @@ class Game:
         return p1_errors, p2_errors
 
     def check_victory(self):
-        if not any(self.p1_bots) and not any(self.p2_bots):
+        if not any(bot[0] for bot in self.p1_bots) and not any(bot[0] for bot in self.p2_bots):
             self.status = TIE
-        elif not any(self.p1_bots):
+        elif not any(bot[0] for bot in self.p1_bots):
             self.status = P2_WIN
-        elif not any(self.p2_bots):
+        elif not any(bot[0] for bot in self.p2_bots):
             self.status = P1_WIN
     
     def submit_turn(self, player_num, actions):
