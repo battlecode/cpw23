@@ -5,7 +5,7 @@ INITIAL_HEALTH = 5
 SHIELD_HEALTH = 3
 
 #Game status constants
-TURN_OVER, P1_PLAYED, P2_PLAYED, P1_WIN, P2_WIN = 0, 1, 2, 3, 4
+TURN_OVER, P1_PLAYED, P2_PLAYED, P1_WIN, P2_WIN, TIE = 0, 1, 2, 3, 4, 5
 
 #Illegal action constants
 INVALID_TARGET, DEAD_TARGET, DEAD_BOT_ACTION, NOT_ENOUGH_AMMO = 0, 1, 2, 3
@@ -60,6 +60,14 @@ class Game:
         for bot_id, health in enumerate(new_p2_healths): self.p2_bots[bot_id][0] = health
         return p1_errors, p2_errors
 
+    def check_victory(self):
+        if not any(self.p1_bots) and not any(self.p2_bots):
+            self.status = TIE
+        elif not any(self.p1_bots):
+            self.status = P2_WIN
+        elif not any(self.p2_bots):
+            self.status = P1_WIN
+    
     def submit_turn(self, player_num, actions):
         assert len(actions) == NUM_BOTS
 
@@ -72,6 +80,7 @@ class Game:
             #Second player is submitting their actions, so process game round
             p1_errors, p2_errors = self.process_turn(actions)
             self.status = TURN_OVER
+            self.check_victory()
             return p1_errors, p2_errors
 
     def __str__(self):
