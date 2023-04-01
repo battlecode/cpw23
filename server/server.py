@@ -54,6 +54,7 @@ async def submit_turn(player, websocket, event):
             opponent_outcome = "win"
         await websocket.send(json.dumps({"type": "game_over", "outcome": player_outcome}))
         await player.opponent.websocket.send(json.dumps({"type": "game_over", "outcome": opponent_outcome}))
+        player.reset()
 
 
 async def handle_player(player):

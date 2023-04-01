@@ -38,3 +38,14 @@ class Player:
         self.opponent.status = WAITING
         self.opponent.opponent = None
         self.opponent = None
+
+    def reset(self):
+        if self.opponent != None:
+            self.opponent.status = WAITING
+            self.opponent.opponent = None
+            self.opponent.game = None
+            self.opponent.player_num = 0
+        self.status = WAITING
+        self.opponent = None
+        self.game = None
+        self.player_num = 0
