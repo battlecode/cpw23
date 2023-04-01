@@ -51,9 +51,8 @@ async def handle_player(player):
             continue
         
         if event["type"] == "create_invite":
-            print('here!')
             #Check if given opponent exists and does not already have an invite
-            if event["opponent"] in players and players[event["opponent"]].status == WAITING:
+            if event["opponent"] in players and event["opponent"] != username and players[event["opponent"]].status == WAITING:
                 await respond(websocket, event, True)
                 await process_create_invite(player, event)
             else: await respond(websocket, event, False)
