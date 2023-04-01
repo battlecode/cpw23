@@ -2,7 +2,7 @@ import asyncio
 import websockets
 import json
 from player import Player, WAITING, SENT_INVITE, RECEIVED_INVITE, PLAYING
-from game import TURN_OVER, P1_PLAYED, P2_PLAYED, P1_WIN, P2_WIN
+from game import TURN_OVER, P1_PLAYED, P2_PLAYED, P1_WIN, P2_WIN, TIE
 
 players = dict()
 
@@ -19,9 +19,9 @@ async def process_invite_response(player, websocket, event):
         player.accept_game()
         game = player.game
         await websocket.send(
-            json.dumps({"type": "game_update", "p1": game.p1_bots, "p2": game.p2_bots, "errors": []}))
+            json.dumps({"type": "game_update", "bots": game.p1_bots, "op_bots": game.p2_bots, "errors": []}))
         await player.opponent.websocket.send(
-            json.dumps({"type": "game_update", "p1": game.p1_bots, "p2": game.p2_bots, "errors": []}))
+            json.dumps({"type": "game_update", "bots": game.p2_bots, "op_bots": game.p1_bots, "errors": []}))
     else: player.deny_game()
 
 async def submit_turn(player, websocket, event):
@@ -29,15 +29,32 @@ async def submit_turn(player, websocket, event):
     p1_errors, p2_errors = game.submit_turn(player.player_num, event["actions"])
     if game.status == TURN_OVER:
         if player.player_num == 1:
+            player_bots = game.p1_bots
+            opponent_bots = game.p2_bots
             player_errors = p1_errors
             opponent_errors = p2_errors
         else:
+            player_bots = game.p2_bots
+            opponent_bots = game.p1_bots
             player_errors = p2_errors
             opponent_errors = p1_errors
         await websocket.send(
-            json.dumps({"type": "game_update", "p1": game.p1_bots, "p2": game.p2_bots, "errors": player_errors}))
+            json.dumps({"type": "game_update", "bots": player_bots, "op_bots": opponent_bots, "errors": player_errors}))
         await player.opponent.websocket.send(
-            json.dumps({"type": "game_update", "p1": game.p1_bots, "p2": game.p2_bots, "errors": opponent_errors}))
+            json.dumps({"type": "game_update", "bots": opponent_bots, "op_bots": player_bots, "errors": opponent_errors}))
+    elif game.status == TIE or game.status == P1_WIN or game.status == P2_WIN:
+        if game.status == TIE:
+            player_outcome = "win"
+            opponent_outcome = "win"
+        elif game.status == P1_WIN and player.player_num == 1 or game.status == P2_WIN and player.player_num == 2:
+            player_outcome = "win"
+            opponent_outcome = "loss"
+        else:
+            player_outcome = "loss"
+            opponent_outcome = "win"
+        await websocket.send(json.dumps({"type": "game_over", "outcome": player_outcome}))
+        await player.opponent.websocket.send(json.dumps({"type": "game_over", "outcome": opponent_outcome}))
+
 
 async def handle_player(player):
     websocket, username = player.websocket, player.username
@@ -138,8 +155,8 @@ Respond to game invite
 Game state (sent when first starting game and after each complete turn)
 {
     "type": "game_update",
-    "p1": [[bot 1 health, bot 1 ammo], [bot 2 health, bot 2 ammo]...]
-    "p2": [[bot 1 health, bot 1 ammo], [bot 2 health, bot 2 ammo]...]
+    "bots": [[bot 1 health, bot 1 ammo], [bot 2 health, bot 2 ammo]...]
+    "op_bots": [[bot 1 health, bot 1 ammo], [bot 2 health, bot 2 ammo]...]
     "errors": [[error code, bot number], [error code, bot number]...]
 }
 '''
