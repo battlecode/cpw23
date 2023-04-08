@@ -13,24 +13,26 @@ class GameController:
     constructor: initializes a game between two websocket connections (players); assumes no games are in progress between the two players right now
     play_game(): plays a full game between two players; throws exceptions if something bad happens (e.g. player disconnect or timeout); returns winner of game
     """
-
     
     def __init__(self, player1, player2):
         """
-        Initializes a game between two players. 
-
-        Preconditions: player1 and player2 are not currently in a game
+        Initializes a game between two players.
+        
         """
-        pass 
+        self.player1 = player1 
+        self.player2 = player2
+
 
     async def play_game(self):
         """
         Runs a full game between players
-
+        
+        Preconditions: player1 and player2 are not currently in a game
         Throws: an exception if a player disconnects or times out
         Returns: the username of the winner of the game, or None if it was a tie
         """
-        pass
+        if self.player1.get_status() != WAITING or self.player2.get_status() != WAITING:
+            raise TypeError("Expected players to not be in a game") 
 
 
 class Player:
