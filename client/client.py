@@ -29,7 +29,6 @@ async def consumer(websocket, message):
         status = RECEIVED_INVITE
         print(event["user"], "has invited you. Enter y/n to respond.")
     elif event["type"] == "game_update":
-        print('game update')
         print(message)
         status = PLAYING
         await play_and_submit_turn(websocket, event, controller, competitor)
@@ -38,7 +37,6 @@ async def consumer(websocket, message):
         print("Game over. Outcome:", event["outcome"])
     else: 
         status = WAITING
-        print(message)
 
 async def producer():
     while True:

@@ -39,9 +39,19 @@ async def submit_turn(player, websocket, event):
             player_errors = p2_errors
             opponent_errors = p1_errors
         await websocket.send(
-            json.dumps({"type": "game_update", "bots": player_bots, "op_bots": opponent_bots, "errors": player_errors}))
+            json.dumps({"type": "game_update", 
+                        "bots": player_bots, 
+                        "op_bots": opponent_bots, 
+                        "actions": event["actions"], 
+                        "op_actions": game.first_player_actions,
+                        "errors": player_errors}))
         await player.opponent.websocket.send(
-            json.dumps({"type": "game_update", "bots": opponent_bots, "op_bots": player_bots, "errors": opponent_errors}))
+            json.dumps({"type": "game_update", 
+                        "bots": opponent_bots, 
+                        "op_bots": player_bots, 
+                        "actions": game.first_player_actions,
+                        "op_actions": event["actions"],
+                        "errors": opponent_errors}))
     elif game.status == TIE or game.status == P1_WIN or game.status == P2_WIN:
         if game.status == TIE:
             player_outcome = "win"
@@ -158,6 +168,14 @@ Game state (sent when first starting game and after each complete turn)
     "type": "game_update",
     "bots": [[bot 1 health, bot 1 ammo], [bot 2 health, bot 2 ammo]...]
     "op_bots": [[bot 1 health, bot 1 ammo], [bot 2 health, bot 2 ammo]...]
+    "actions": [
+        {"type": "none/load/launch/shield", "target": number, "strength": number},
+        ...for each bot in order
+    ]
+    "op_actions": [
+        {"type": "none/load/launch/shield", "target": number, "strength": number},
+        ...for each bot in order
+    ]
     "errors": [[error code, bot number], [error code, bot number]...]
 }
 '''
