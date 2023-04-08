@@ -12,11 +12,10 @@ controller = None
 competitor = Competitor()
 
 async def play_and_submit_turn(websocket, event, controller, competitor):
-    if controller == None: controller = Controller(event["bots"])
-    else:
-        controller.reset()
-        controller.player_state = event["bots"]
-        controller.opponent_healths = [bot[0] for bot in event["op_bots"]]
+    if controller == None: controller = Controller()
+    controller.reset()
+    controller.player_state = event["bots"]
+    controller.opponent_state = event["op_bots"]
     competitor.play_turn(controller)
     await websocket.send(json.dumps({"type": "turn", "actions": controller.actions}))
 

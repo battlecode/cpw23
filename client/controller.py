@@ -1,15 +1,12 @@
 
-NUM_BOTS = 3
-
 class Controller:
+    NUM_BOTS = 3
 
-    def __init__(self, initial_state):
-        self.actions = [{"type": "none"} for _ in range(NUM_BOTS)]
-        self.player_state = initial_state
-        self.opponent_healths = [bot[0] for bot in initial_state]
+    def __init__(self):
+        self.actions = [{"type": "none"} for _ in range(self.NUM_BOTS)]
 
     def reset(self):
-        self.actions = [{"type": "none"} for _ in range(NUM_BOTS)]
+        self.actions = [{"type": "none"} for _ in range(self.NUM_BOTS)]
 
     def load(self, bot):
         self.actions[bot] = {"type": "load"}
@@ -27,4 +24,9 @@ class Controller:
         return self.player_state[bot][1]
 
     def get_opponent_bot_health(self, bot):
-        return self.opponent_healths(bot)
+        return self.opponent_state[bot][0]
+    
+    def get_opponent_bot_ammo(self, bot):
+        return self.opponent_state[bot][1]
+    
+    
