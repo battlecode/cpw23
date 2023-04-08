@@ -1,53 +1,87 @@
 
-NUM_BOTS = 3
-
 class Controller:
+    NUM_BOTS = 3
+    NO_ERROR, INVALID_TARGET, DEAD_TARGET, DEAD_BOT_ACTION, NOT_ENOUGH_AMMO = -1, 0, 1, 2, 3
 
-    def __init__(self, initial_state):
-        self.actions = [{"type": "none"} for _ in range(NUM_BOTS)]
-        self.player_state = initial_state
-        self.opponent_healths = [bot[0] for bot in initial_state]
+    def __init__(self):
+        self.prev_round_errors = [-1 for _ in range(self.NUM_BOTS)]
+        self.actions = [{"type": "none"} for _ in range(self.NUM_BOTS)]
 
     def reset(self):
-        '''
-        Sets all robot actions to none
-        '''
-        self.actions = [{"type": "none"} for _ in range(NUM_BOTS)]
+        self.actions = [{"type": "none"} for _ in range(self.NUM_BOTS)]
 
     def load(self, bot):
-        '''
-        Instructs the bot to load on this turn.
-        '''
+        """
+        Takes load action, adds one to ammo of bot
+        Args:
+            bot (int): index of bot
+        """
         self.actions[bot] = {"type": "load"}
 
     def launch(self, bot, target_bot, attack_strength):
-        '''
-        Instructs the bot to attack target_bot using attack_strength ammo
-
-        if attack strength greater than ammo, use all ammo
-        '''
+        """
+        Takes launch action
+        Args:
+            bot (int): index of bot
+            target_bot (int): index of opponents target bot
+            attack_strenght (int): amount of ammo to attack with
+        """
         self.actions[bot] = {"type": "launch", "target": target_bot, "strength": attack_strength}
 
     def shield(self, bot):
-        '''
-        Instructs the bot to shield on this turn.
-        '''
+        """
+        Takes shield action
+        Args:
+            bot (int): index of bot
+        """
         self.actions[bot] = {"type": "shield"}
 
     def get_my_bot_health(self, bot):
-        '''
-        Returns the health of the given bot
-        '''
+        """
+        Returns health for teams bot with index bot
+        Args:
+            bot (int): index of bot
+        Returns:
+            (int): health for teams bot
+        """
         return self.player_state[bot][0]
     
     def get_my_bot_ammo(self, bot):
-        '''
-        Returns the available ammo of the given bot.
-        '''
+        """
+        Returns ammo for teams bot with index bot
+        Args:
+            bot (int): index of bot
+        Returns:
+            (int): ammo for teams bot
+        """
         return self.player_state[bot][1]
 
     def get_opponent_bot_health(self, bot):
-        '''
-        Returns the health of the given opponent bot.
-        '''
-        return self.opponent_healths(bot)
+        """
+        Returns health for opponents bot with index bot
+        Args:
+            bot (int): index of bot
+        Returns:
+            (int): health for opponent bot
+        """
+        return self.opponent_state[bot][0]
+    
+    def get_opponent_bot_ammo(self, bot):
+        """
+        Returns ammo for opponents bot with index bot
+        Args:
+            bot (int): index of bot
+        Returns:
+            (int): ammo for opponent bot
+        """
+        return self.opponent_state[bot][1]
+    
+    def get_prev_round_errors(self):
+        """
+        Returns error codes from previous round
+        Returns:
+            (list[int]): element at i corresponds to error code for bot i in previous round
+        """
+        return self.prev_round_errors
+    
+    
