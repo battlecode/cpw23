@@ -49,8 +49,7 @@ class GameController:
         # records gamestate and actions taken resulting in the gamestate
         self.history = [json.dumps({
             'game_state': self.game.dumps(),
-            'actions': None
-            'valid': True
+            'actions': None,
         })]
         self.error = None
         self.id = uuid.uuid4()
@@ -82,10 +81,6 @@ class GameController:
                 self.error = e
                 raise e
     
-
-            
-
-
     async def step_turn(self):
         """
         Steps a single turn of a game between two players
@@ -112,15 +107,6 @@ class GameController:
             'game_state': self.game.dumps(), 
             'actions': actions
         }))
-       
-        
-        
-        
-
-
-
-
-
 
     def get_result(self):
         """
@@ -131,8 +117,6 @@ class GameController:
             'history': self.history,
             'errored': self.error is not None
         })
-
-        
 
 class Player:
     def __init__(self, websocket, username):
@@ -164,8 +148,6 @@ class Player:
         except e:
             raise PlayerTimeoutError
         
-
-
     async def is_connected(self):
         try:
             await asyncio.wait_for(self.websocket.send(""), 1)
@@ -174,44 +156,5 @@ class Player:
 
         return True
         
-
     async def send_game_over(self, winner_username):
         pass
-
-
-    # def invite(self, opponent):
-    #     if self.opponent != None:
-    #         self.opponent.status = WAITING
-    #         self.opponent.opponent = None
-    #     self.status = SENT_INVITE
-    #     self.opponent = opponent
-    #     opponent.status = RECEIVED_INVITE
-    #     opponent.opponent = self
-
-    # def accept_game(self,):
-    #     assert self.opponent != None
-    #     game = Game()
-    #     self.game = game
-    #     self.status = PLAYING
-    #     self.player_num = 1
-    #     self.opponent.game = game
-    #     self.opponent.status = PLAYING
-    #     self.opponent.player_num = 2
-
-    # def deny_game(self):
-    #     assert self.opponent != None
-    #     self.status = WAITING
-    #     self.opponent.status = WAITING
-    #     self.opponent.opponent = None
-    #     self.opponent = None
-
-    # def reset(self):
-    #     if self.opponent != None:
-    #         self.opponent.status = WAITING
-    #         self.opponent.opponent = None
-    #         self.opponent.game = None
-    #         self.opponent.player_num = 0
-    #     self.status = WAITING
-    #     self.opponent = None
-    #     self.game = None
-    #     self.player_num = 0
