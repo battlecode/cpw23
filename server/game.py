@@ -84,7 +84,7 @@ class Game:
         """
         # {"type": "game_update", "bots": player_bots, "op_bots": opponent_bots, "errors": player_errors}
 
-    def dump(self):
+    def dumps(self):
         game_rep = {
             'p1_bots': self.p1_bots,
             'p2_bots': self.p2_bots,
@@ -93,6 +93,6 @@ class Game:
             'p2_error': self.p2_errors
         }
 
-        return json.dump(game_rep)
+        return json.dumps(game_rep)
     def __str__(self):
         return "P1: " + str(self.p1_bots) + ", P2: " + str(self.p2_bots)
