@@ -1,4 +1,5 @@
 
+import json
 #Gameplay constants
 NUM_BOTS = 3
 INITIAL_HEALTH = 5
@@ -45,19 +46,17 @@ class Game:
         self.p2_bots = [[INITIAL_HEALTH, 0] for _ in range(NUM_BOTS)]
         self.status = TURN_OVER
         self.first_player_actions = None
+        self.p1_errors = []
+        self.p2_errors = []
 
-    def process_turn(self, actions):
-        if self.status == P1_PLAYED:
-            p1_actions = self.first_player_actions
-            p2_actions = actions
-        else:
-            p1_actions = actions
-            p2_actions = self.first_player_actions
+    def process_turn(self, p1_actions, p2_actions):
 
         new_p2_healths, p1_errors = process_actions(p1_actions, self.p1_bots, p2_actions, self.p2_bots)
         new_p1_healths, p2_errors = process_actions(p2_actions, self.p2_bots, p1_actions, self.p1_bots)
         for bot_id, health in enumerate(new_p1_healths): self.p1_bots[bot_id][0] = health
         for bot_id, health in enumerate(new_p2_healths): self.p2_bots[bot_id][0] = health
+        self.p1_errors = p1_errors
+        self.p2_errors = p2_errors
         return p1_errors, p2_errors
 
     def check_victory(self):
@@ -68,20 +67,32 @@ class Game:
         elif not any(bot[0] for bot in self.p2_bots):
             self.status = P1_WIN
     
-    def submit_turn(self, player_num, actions):
-        assert len(actions) == NUM_BOTS
+    def submit_turn(self, p1_actions, p2_actions):
+        assert len(p1_actions) == NUM_BOTS
+        assert len(p2_actions) == NUM_BOTS
 
-        if self.status == TURN_OVER: 
-            #First player is submitting their actions, so do nothing besides record them for now
-            self.first_player_actions = actions
-            self.status = P1_PLAYED if player_num == 1 else P2_PLAYED
-            return [], []
-        elif (self.status == P2_PLAYED and player_num == 1) or (self.status == P1_PLAYED and player_num == 2):
-            #Second player is submitting their actions, so process game round
-            p1_errors, p2_errors = self.process_turn(actions)
-            self.status = TURN_OVER
-            self.check_victory()
-            return p1_errors, p2_errors
+        #Second player is submitting their actions, so process game round
+        p1_errors, p2_errors = self.process_turn(p1_actions, p2_actions)
+        self.status = TURN_OVER
+        self.check_victory()
+        return p1_errors, p2_errors
+            
 
+    def get_bots(self, player):
+        """
+        Returns the 
+        """
+        # {"type": "game_update", "bots": player_bots, "op_bots": opponent_bots, "errors": player_errors}
+
+    def dump(self):
+        game_rep = {
+            'p1_bots': self.p1_bots,
+            'p2_bots': self.p2_bots,
+            'status': self.status,
+            'p1_errors': self.p1_errors,
+            'p2_error': self.p2_errors
+        }
+
+        return json.dump(game_rep)
     def __str__(self):
         return "P1: " + str(self.p1_bots) + ", P2: " + str(self.p2_bots)

@@ -111,6 +111,9 @@ async def handler(websocket):
         await handle_player(player)
     finally:
         del players[username]
+async def update_players(players):
+
+    players = {username: player for username, player in players.items() if player.is_connected()}
 
 async def main():
     async with websockets.serve(handler, "", 8001):
@@ -156,7 +159,7 @@ Respond to game invite
 Game state (sent when first starting game and after each complete turn)
 {
     "type": "game_update",
-    "bots": [[bot 1 health, bot 1 ammo], [bot 2 health, bot 2 ammo]...]
+    "bots": [[bot 1 health, bot 1 ammo, error_code], [bot 2 health, bot 2 ammo, error]...]
     "op_bots": [[bot 1 health, bot 1 ammo], [bot 2 health, bot 2 ammo]...]
     "errors": [[error code, bot number], [error code, bot number]...]
 }
