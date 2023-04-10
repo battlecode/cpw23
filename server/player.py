@@ -36,6 +36,7 @@ class Player:
         await self.websocket.send(message)
 
     async def send_begin_message(self, game_id, bots, op_bots):
+        print('sent begin msg to ', self.username)
         await self.websocket.send(json.dumps({
             "type": "begin_game",
             "game_id": game_id,
@@ -44,6 +45,8 @@ class Player:
         }))
     
     async def send_game_update(self, game_id, turn, bots, op_bots, action_errors):
+        print('turn', turn, 'sent game update to', self.username, 
+        'with value', bots, op_bots, action_errors)
         await self.websocket.send(json.dumps({
             "type": "game_update",
             "game_id": game_id,
@@ -53,15 +56,17 @@ class Player:
             "action_errors": action_errors
         }))
 
-    async def send_game_over(self, game_id, errors, history):
+    async def send_game_over(self, game_id, winner, errors, history):
         """
         Send a game over message to the player. Does not throw 
         an exception if the send fails. 
         """
         try:
+            print('sending game over', winner, errors)
             await self.websocket.send(json.dumps({
                 "type": "game_over",
                 "game_id": game_id,
+                "winner": winner,
                 "errors": errors,
                 "history": history
             }))
@@ -142,7 +147,7 @@ class GameController:
         self.winner = None
         self.player_errors = None
 
-        self.id = uuid.uuid4()
+        self.id = str(uuid.uuid4())
 
     def get_id(self):
         """
@@ -171,13 +176,14 @@ class GameController:
         If a player disconnects or times out during the game, they automatically lose. 
         If both players disconnect/time out or any one times out before the game, there is a tie.
         """
+        print('playing game')
         # acquire player locks in order
         if (self.player1.username < self.player2.username):
-            asyncio.acquire(self.player1.lock)
-            asyncio.acquire(self.player2.lock)
+            await self.player1.lock.acquire()
+            await self.player2.lock.acquire()
         else:
-            asyncio.acquire(self.player2.lock)
-            asyncio.acquire(self.player1.lock)
+            await self.player2.lock.acquire()
+            await self.player1.lock.acquire()
         
         try:
             # send game begin messages to each player
@@ -185,6 +191,7 @@ class GameController:
                 await self.player1.send_begin_message(
                     self.id, self.game.p1_bots, self.game.p2_bots)
             except:
+                print('begin error', self.player1.username)
                 self.player_errors = (self.player1.username,)
                 return
             try:
@@ -192,29 +199,36 @@ class GameController:
                     self.id, self.game.p2_bots, self.game.p1_bots
                 )
             except:
+                print('begin error', self.player2.username)
                 self.player_errors = (self.player2.username,)
                 # if player 2 errors but player 1 didn't error, we tell player 1
                 # that the game is over
-                await self.player1.send_game_over(self.get_id(), self.player_errors)
+                await self.player1.send_game_over(self.get_id(), None, self.player_errors, self.history)
                 return
             
             # run the game
             while not self.game.is_game_over():
-                errors = self.step_turn()
+                errors = await self.step_turn()
                 if len(errors) > 0:
                     self.player_errors = errors
                     if len(errors) == 1 and errors[0] == self.player1.username: # player 1 errored
                         self.winner = self.player2.username
                     elif len(errors) == 1: # player 2 errorred
                         self.winner = self.player1.username
-                break
+                    break
+            
+            winner_code = self.game.get_winner()
+            if winner_code == P1_WIN:
+                self.winner = self.player1.username
+            elif winner_code == P2_WIN:
+                self.winner = self.player2.username
             
             # send game end messages to each player
-            await self.player1.send_game_over(self.get_id(), self.player_errors, self.history)
-            await self.player2.send_game_over(self.get_id(), self.player_errors, self.history)
+            await self.player1.send_game_over(self.get_id(), self.winner, self.player_errors, self.history)
+            await self.player2.send_game_over(self.get_id(), self.winner, self.player_errors, self.history)
         finally:
-            asyncio.release(self.player1.lock)
-            asyncio.release(self.player2.lock)
+            self.player1.lock.release()
+            self.player2.lock.release()
     
     async def step_turn(self):
         """
@@ -228,8 +242,8 @@ class GameController:
         # receive turn actions
         # [[p1 actions], [p2 actions]]
         actions = await asyncio.gather(
-                self.player1.wait_for_player_turn(),
-                self.player2.wait_for_player_turn(),
+                self.player1.wait_for_player_turn(2),
+                self.player2.wait_for_player_turn(2),
                 return_exceptions=True)
         errors = ()
         if isinstance(actions[0], Exception):
@@ -240,7 +254,7 @@ class GameController:
             return errors
 
         # update the actual game
-        self.game.submit_turn(self, *actions)
+        self.game.submit_turn(*actions)
         self.history.append(json.dumps({
             'game_state': self.game.dumps(), 
             'actions': actions

@@ -14,19 +14,25 @@ username = str(time.time())
 game_history = []
 
 async def begin_game(websocket, event):
+    print('received begin message', event)
     global game_id, competitor
     game_id = event['game_id']
     competitor = Competitor()
-    play_and_submit_turn(websocket, 0, event['bots'], event['op_bots'], competitor)
+    await play_and_submit_turn(websocket, game_id, 0, event['bots'], event['op_bots'], competitor)
 
-async def play_and_submit_turn(websocket, turn, my_bots, op_bots, competitor):
+async def play_and_submit_turn(websocket, game_id, turn, my_bots, op_bots, competitor):
     controller = Controller(turn, my_bots, op_bots)
     competitor.play_turn(controller)
-    await websocket.send(json.dumps({"type": "turn", "actions": controller.actions}))
+    print('submitting turn', controller.actions)
+    await websocket.send(json.dumps({
+        "type": "turn", 
+        'game_id': game_id, 
+        'turn': turn,
+        "actions": controller.actions}))
 
 async def consumer(websocket, message):
     #This is sub-optimal, but there is no easy way around it
-    global status, competitor
+    global status, competitor, game_id
     event = json.loads(message)
 
     if event["type"] == "login" and not event['success']:
@@ -34,16 +40,16 @@ async def consumer(websocket, message):
         print(f'The username "{username}" is already in use. Please use a different username.')
     elif event['type'] == 'begin_game':
         print('beginning game', event)
-        begin_game(websocket, event)
+        await begin_game(websocket, event)
     elif event["type"] == "game_update" and event['game_id'] == game_id:
         print('game update', event)
         status = PLAYING
-        await play_and_submit_turn(websocket, event, competitor)
+        await play_and_submit_turn(websocket, game_id, event['turn'], event['bots'], event['op_bots'], competitor)
     elif event["type"] == "game_over" and event['game_id'] == game_id:
         game_id = None
         game_history.append(event)
         status = WAITING
-        print("Game over. Outcome:", event)
+        print(f"Game over. Winner: {event['winner']}, Errors: {event['errors']}")
     else: 
         status = WAITING
         print(message)
@@ -51,10 +57,6 @@ async def consumer(websocket, message):
 async def producer():
     while True:
         command = await asyncio.get_event_loop().run_in_executor(None, lambda: input().split())
-        if status == RECEIVED_INVITE:
-            return json.dumps({"type": "invite_response", "accept": command[0].lower() == 'y'})
-        elif command[0] == "invite":
-            return json.dumps({"type": "create_invite", "opponent": command[1]})
 
 async def consumer_handler(websocket):
     async for message in websocket:

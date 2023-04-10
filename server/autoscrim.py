@@ -1,11 +1,9 @@
 import asyncio
 import websockets
 import json
-from player import Player, PlayerDisconnectError, PlayerTimeoutError, WAITING, SENT_INVITE, RECEIVED_INVITE, PLAYING
-from game import TURN_OVER, P1_PLAYED, P2_PLAYED, P1_WIN, P2_WIN, TIE
+from player import GameController
 import random
 import time
-from server import GameController
 
 async def autoscrim(players):
     """
