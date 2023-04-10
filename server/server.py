@@ -2,27 +2,14 @@ import asyncio
 import websockets
 import json
 from player import Player, WAITING, SENT_INVITE, RECEIVED_INVITE, PLAYING
-from game import TURN_OVER, P1_PLAYED, P2_PLAYED, P1_WIN, P2_WIN, TIE
+from autoscrim import autoscrim 
+from game import TURN_OVER, P1_WIN, P2_WIN, TIE
 
+# a dict mapping player usernames to Player objects
 players = dict()
 
 async def respond(websocket, event, success):
     await websocket.send(json.dumps({"type": event["type"], "success": success}))
-
-async def process_create_invite(player, event):
-    opponent = players[event["opponent"]]
-    await opponent.websocket.send(json.dumps({"type": "send_invite", "user": player.username}))
-    player.invite(opponent)
-
-async def process_invite_response(player, websocket, event):
-    if event["accept"]: 
-        player.accept_game()
-        game = player.game
-        await websocket.send(
-            json.dumps({"type": "game_update", "bots": game.p1_bots, "op_bots": game.p2_bots, "errors": []}))
-        await player.opponent.websocket.send(
-            json.dumps({"type": "game_update", "bots": game.p2_bots, "op_bots": game.p1_bots, "errors": []}))
-    else: player.deny_game()
 
 async def submit_turn(player, websocket, event):
     game = player.game
@@ -61,35 +48,44 @@ async def handle_player(player):
     websocket, username = player.websocket, player.username
     print("Logged in", username)
 
-    async for message in websocket:
-        try:
-            event = json.loads(message)
-        except json.JSONDecodeError:
-            await websocket.send(json.dumps({"type": "invalid_request"}))
-            continue
-        
-        if event["type"] == "create_invite":
-            #Check if given opponent exists and does not already have an invite
-            if event["opponent"] in players and event["opponent"] != username and players[event["opponent"]].status == WAITING:
-                await respond(websocket, event, True)
-                await process_create_invite(player, event)
-            else: await respond(websocket, event, False)
-        
-        elif event["type"] == "invite_response":
-            #Check if the player has an invite to respond to
-            if player.status == RECEIVED_INVITE:
-                await respond(websocket, event, True)
-                await process_invite_response(player, websocket, event)
-            else: await respond(websocket, event, False)
+    # make sure web socket stays connected; ping it every 30 seconds
+    try:
+        while True:
+            await websocket.ping()
+            await asyncio.sleep(30)
+    finally:
+        del players[username]
 
-        elif event["type"] == "turn":
-            if player.status == PLAYING:
-                await respond(websocket, event, True)
-                await submit_turn(player, websocket, event)
-            else: await respond(websocket, event, False)
+    # async for message in websocket:
+    #     try:
+    #         event = json.loads(message)
+    #     except json.JSONDecodeError:
+    #         await websocket.send(json.dumps({"type": "invalid_request"}))
+    #         continue
+        
+    #     if event["type"] == "create_invite":
+    #         #Check if given opponent exists and does not already have an invite
+    #         if event["opponent"] in players and event["opponent"] != username and players[event["opponent"]].status == WAITING:
+    #             await respond(websocket, event, True)
+    #             await process_create_invite(player, event)
+    #         else: await respond(websocket, event, False)
+        
+    #     elif event["type"] == "invite_response":
+    #         #Check if the player has an invite to respond to
+    #         if player.status == RECEIVED_INVITE:
+    #             await respond(websocket, event, True)
+    #             await process_invite_response(player, websocket, event)
+    #         else: await respond(websocket, event, False)
+
+    #     elif event["type"] == "turn":
+    #         if player.status == PLAYING:
+    #             await respond(websocket, event, True)
+    #             await submit_turn(player, websocket, event)
+    #         else: await respond(websocket, event, False)
 
 async def handler(websocket):
     player = None
+    # wait for login
     async for message in websocket:
         try:
             event = json.loads(message)
@@ -106,7 +102,7 @@ async def handler(websocket):
                 players[username] = player
                 await respond(websocket, event, True)
                 break
-
+    # then handle player
     try:
         await handle_player(player)
     finally:
@@ -117,7 +113,9 @@ async def update_players(players):
 
 async def main():
     async with websockets.serve(handler, "", 8001):
-        await asyncio.Future()  # run forever
+        while True:
+            await asyncio.sleep(60*5)
+            autoscrim(players)
 
 if __name__ == "__main__":
     asyncio.run(main())

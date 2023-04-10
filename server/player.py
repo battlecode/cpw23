@@ -71,8 +71,14 @@ class GameController:
             a PlayerAlreadyInGameError if a player was already in the game
         Returns: the username of the winner of the game, or None if it was a tie
         """
-        # TODO: lock on player1 and player2 to avoid concurrency issues?
-        if self.player1.get_status() != WAITING or self.player2.get_status() != WAITING:
+        if (self.player1.username < self.player2.username):
+            asyncio.acquire(self.player1.username)
+            asyncio.acquire(self.player2.username)
+        else:
+            asyncio.acquire(self.player2.username)
+            asyncio.acquire(self.player1.username)
+
+        if self.player1.status != WAITING or self.player2.status != WAITING:
             raise TypeError("Expected players to not be in a game")  
         while self.game.status not in (P1_WIN, P2_WIN, TIE):
             try:
@@ -123,6 +129,7 @@ class Player:
         self.websocket = websocket
         self.username = username
         self.status = WAITING
+        self.lock = asyncio.Lock()
         # self.opponent = None
         # self.game = None
         # self.player_num = 0
@@ -140,21 +147,20 @@ class Player:
         try:
             await self.websocket.send(turn_message)
         except:
-            raise PlayerDisconnectError
+            raise PlayerDisconnectError()
         try:
             response = await asyncio.wait_for(self.websocket.recv(), 1)
             if (response['type'] == 'turn'):
                 return response['actions']
-        except e:
-            raise PlayerTimeoutError
-        
-    async def is_connected(self):
-        try:
-            await asyncio.wait_for(self.websocket.send(""), 1)
         except:
-            return False
-
-        return True
+            raise PlayerTimeoutError()
+        
+    # async def is_connected(self):
+    #     try:
+    #         await asyncio.wait_for(self.websocket.ping(), 1)
+    #     except:
+    #         return False
+    #     return True
         
     async def send_game_over(self, winner_username):
         pass
