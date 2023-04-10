@@ -51,37 +51,38 @@ async def handle_player(player):
     # make sure web socket stays connected; ping it every 30 seconds
     try:
         while True:
+            # TODO: figure out if this ping interferes w/ autoscrim pings
             await websocket.ping()
             await asyncio.sleep(30)
     finally:
         del players[username]
 
-    # async for message in websocket:
-    #     try:
-    #         event = json.loads(message)
-    #     except json.JSONDecodeError:
-    #         await websocket.send(json.dumps({"type": "invalid_request"}))
-    #         continue
+    async for message in websocket:
+        try:
+            event = json.loads(message)
+        except json.JSONDecodeError:
+            await websocket.send(json.dumps({"type": "invalid_request"}))
+            continue
         
-    #     if event["type"] == "create_invite":
-    #         #Check if given opponent exists and does not already have an invite
-    #         if event["opponent"] in players and event["opponent"] != username and players[event["opponent"]].status == WAITING:
-    #             await respond(websocket, event, True)
-    #             await process_create_invite(player, event)
-    #         else: await respond(websocket, event, False)
+        if event["type"] == "create_invite":
+            #Check if given opponent exists and does not already have an invite
+            if event["opponent"] in players and event["opponent"] != username and players[event["opponent"]].status == WAITING:
+                await respond(websocket, event, True)
+                await process_create_invite(player, event)
+            else: await respond(websocket, event, False)
         
-    #     elif event["type"] == "invite_response":
-    #         #Check if the player has an invite to respond to
-    #         if player.status == RECEIVED_INVITE:
-    #             await respond(websocket, event, True)
-    #             await process_invite_response(player, websocket, event)
-    #         else: await respond(websocket, event, False)
+        elif event["type"] == "invite_response":
+            #Check if the player has an invite to respond to
+            if player.status == RECEIVED_INVITE:
+                await respond(websocket, event, True)
+                await process_invite_response(player, websocket, event)
+            else: await respond(websocket, event, False)
 
-    #     elif event["type"] == "turn":
-    #         if player.status == PLAYING:
-    #             await respond(websocket, event, True)
-    #             await submit_turn(player, websocket, event)
-    #         else: await respond(websocket, event, False)
+        elif event["type"] == "turn":
+            if player.status == PLAYING:
+                await respond(websocket, event, True)
+                await submit_turn(player, websocket, event)
+            else: await respond(websocket, event, False)
 
 async def handler(websocket):
     player = None
@@ -120,23 +121,39 @@ async def main():
 if __name__ == "__main__":
     asyncio.run(main())
 
+
+# TODO: validation with schema
+# SUBMIT_TURN_SCHEMA = {
+#     "type": "object",
+#     "properties": { 
+#         "type": {"type": "string"},
+#         "game_id": {"type": "string"},
+#         "turn": {"type": "number"},
+#         "actions": {
+#             "type": "array",
+#             "items": { # validate each item of the actions arr
+#                 "type": "object",
+#                 "properties": {
+#                     "type": 
+#                 }
+#             }
+#         }        
+#     }
+# }
+
 '''
 Websocket communication
 
 CLIENT -> SERVER
 
 Initial login
-{"type": "login", "user": "your username"}
-
-Send game invite
-{"type": "create_invite", "opponent": "opponent username"}
-
-Respond to game invite
-{"type": "invite_response", "accept": true/false}
+{ "type": "login", "user": "your username" }
 
 Submit turn
 {
-    "type": "turn", 
+    "type": "turn",
+    "game_id": an uuid for the game the turn belongs to ,
+    "turn": the turn number of this turn,
     "actions": [
         {"type": "none/load/launch/shield", "target": number, "strength": number},
         ...for each bot in order
@@ -145,20 +162,35 @@ Submit turn
 
 SERVER -> CLIENT
 
-Initial login
-{"type": "login", "success": true/false}
+Upon client login, send
+{ "type": "login", "success": true/false }
 
-Send game invite
-{"type": "create_invite", "success": true/false}
-
-Respond to game invite
-{"type": "invite_response", "success": true/false}
-
-Game state (sent when first starting game and after each complete turn)
+When a game begins, send
 {
-    "type": "game_update",
+    "type": "begin_game",
+    "game_id": an uuid for this game
     "bots": [[bot 1 health, bot 1 ammo, error_code], [bot 2 health, bot 2 ammo, error]...]
     "op_bots": [[bot 1 health, bot 1 ammo], [bot 2 health, bot 2 ammo]...]
+}
+
+When a turn ends, send game state:
+{
+    "type": "game_update",
+    "game_id": an uuid for this game,
+    "turn": the turn number that just occurred,
+    "bots": [[bot 1 health, bot 1 ammo, error_code], [bot 2 health, bot 2 ammo, error]...]
+    "op_bots": [[bot 1 health, bot 1 ammo], [bot 2 health, bot 2 ammo]...],
     "errors": [[error code, bot number], [error code, bot number]...]
 }
+
+When a game is over, send
+{
+    "type": "game_over",
+    "game_id": uuid for this game,
+    "errors": a list of usernames that disconnected,
+    "history": a list containing the history of the game
+}
+
+When receiving invalid requests, send
+{ "type": "invalid_request" }
 '''

@@ -8,37 +8,44 @@ import time
 from server import GameController
 
 async def autoscrim(players):
-    
-    num_players = len(players) // 2
-    is_even = (len(players) % 2 == 0)
+    """
+    Runs autoscrims between all the players passed in.
 
-    player_set_1, player_set_2 = (players[:num_players], players[num_players:])
+    Arguments:
+    players: a dictionary mapping player usernames (strings) to Player objects
+    """
+    num_players = len(players)
+    # number of games (ignoring one player if there are an odd # of players)
+    num_games = num_players // 2
+    is_even = num_players % 2 == 0
 
-    random.shuffle(player_set_1)
-    random.shuffle(player_set_2)
+    shuffled = list(players.values())
+    random.shuffle(shuffled)
 
-    games = []
-    for pair in zip(player_set_1, player_set_2):
-        games.append(GameController(*pair))
+    player_set_1 = shuffled[:num_games]
+    player_set_2 = shuffled[num_games:]
 
-    # if odd match the last player in player_set_2 with a random player from 1
+    games = [pair for pair in zip(player_set_1, player_set_2)]
+
+    # if odd, match the extra player with the first player in player_arr_1
     if not is_even:
-        player = random.choice(player_set_1)
-        games.append(GameController(player, player_set_2[-1]))
+        # extra player is located at player_set_2[-1]
+        games.append((player_set_1[0], player_set_2[-1]))
 
-    games_to_run = [game_wrapper(game) for game in games]
+    games_to_run = [game_wrapper(pair) for pair in games]
     await asyncio.gather(*games_to_run)
     
 
-async def game_wrapper(game):
-    p1, p2 = (game.player1, game.player2)
-    try:
-        game.play_game()
-
-    except PlayerTimeoutError:
-        time.sleep(0.01)
+async def game_wrapper(pair):
+    p1, p2 = pair
+    # try running a game twice before giving up
+    for i in range(2):
         try:
-            new_game = GameController(p1, p2)
-            new_game.play_game()
-        except (PlayerDisconnectError, PlayerTimeoutError):
-            pass
+            game = GameController(p1, p2)
+            game.play_game()
+            break
+        except PlayerTimeoutError:
+            # wait 5 seconds before trying again
+            asyncio.sleep(5)
+        except PlayerDisconnectError:
+            break

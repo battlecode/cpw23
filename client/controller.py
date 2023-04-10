@@ -3,10 +3,11 @@ NUM_BOTS = 3
 
 class Controller:
 
-    def __init__(self, initial_state):
+    def __init__(self, turn, my_bots, op_bots):
+        self.turn = turn
         self.actions = [{"type": "none"} for _ in range(NUM_BOTS)]
-        self.player_state = initial_state
-        self.opponent_healths = [bot[0] for bot in initial_state]
+        self.player_state = my_bots
+        self.opponent_healths = op_bots
 
     def reset(self):
         self.actions = [{"type": "none"} for _ in range(NUM_BOTS)]
@@ -19,6 +20,9 @@ class Controller:
 
     def shield(self, bot):
         self.actions[bot] = {"type": "shield"}
+    
+    def get_turn_num(self):
+        return self.turn
 
     def get_my_bot_health(self, bot):
         return self.player_state[bot][0]

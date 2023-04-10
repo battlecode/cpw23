@@ -1,11 +1,10 @@
 from game import Game, P1_WIN, P2_WIN, TIE
 import json
+import jsonschema
 import websockets
+from websockets.exceptions import ConnectionClosed
 import asyncio
 import uuid
-
-#Player status constants
-WAITING, PLAYING = 0, 1
 
 class PlayerAlreadyInGameError(TypeError):
     """
@@ -13,7 +12,7 @@ class PlayerAlreadyInGameError(TypeError):
     """
     pass
 
-class PlayerDisconnectError(RuntimeError):
+class PlayerDisconnectError(ConnectionClosed):
     """
     Represents a player error (disconnect)
     """
@@ -24,6 +23,95 @@ class PlayerTimeoutError(RuntimeError):
     Represents a player timing out error 
     """
     pass
+
+MAX_MESSAGE_SIZE = 2000
+
+class Player:
+    def __init__(self, websocket, username):
+        self.websocket = websocket
+        self.username = username
+        self.lock = asyncio.Lock()
+    
+    async def send_message(self, message):
+        await self.websocket.send(message)
+
+    async def send_begin_message(self, game_id, bots, op_bots):
+        await self.websocket.send(json.dumps({
+            "type": "begin_game",
+            "game_id": game_id,
+            "bots": bots,
+            "op_bots": op_bots
+        }))
+    
+    async def send_game_update(self, game_id, turn, bots, op_bots, action_errors):
+        await self.websocket.send(json.dumps({
+            "type": "game_update",
+            "game_id": game_id,
+            "turn": turn,
+            "bots": bots,
+            "op_bots": op_bots,
+            "action_errors": action_errors
+        }))
+
+    async def send_game_over(self, game_id, errors, history):
+        """
+        Send a game over message to the player. Does not throw 
+        an exception if the send fails. 
+        """
+        try:
+            await self.websocket.send(json.dumps({
+                "type": "game_over",
+                "game_id": game_id,
+                "errors": errors,
+                "history": history
+            }))
+        except:
+            pass
+
+    async def wait_for_player_turn(self, timeout):
+        """
+        Waits for a player to send their turn actions. 
+        
+        `timeout` is the time to wait for in seconds.
+
+        Returns the list of actions requested by the player
+
+        Raises a TimeoutError if the turn message is not received by the timeout
+        Raises a ConnectionClosed error if the websocket is closed
+        """
+        async def receive_helper():
+            player_actions = None
+            while player_actions is None:
+                response = await self.websocket.recv()
+                player_actions = self.parse_turn_message(response)
+                if player_actions is None:
+                    await self.send_invalid_message()
+            return player_actions
+
+        return await asyncio.wait_for(receive_helper(), timeout)
+    
+    def parse_turn_message(self, turn_message):
+        """
+        Returns a list of actions for this player, or None if the input is invalid.
+        turn_message is expected to be a json string as described in server.py7
+        """
+        # TODO here: implement validation with jsonschema
+        if len(turn_message) > MAX_MESSAGE_SIZE:
+            # ignore overly large json responses
+            return None
+        try:
+            result = json.loads(turn_message)
+            if ('type' in result and 'actions' in result
+                and result['type'] == 'turn'):
+                return result['actions']
+        except:
+            return None
+    
+    async def send_invalid_message(self):
+        """
+        Send a message to the player that their request was invalid.
+        """
+        await self.websocket.send(json.dumps({ "type": "invalid_request" }))
 
 class GameController:
     """
@@ -38,10 +126,9 @@ class GameController:
                     assumes no games are in progress between the two players right now
     """
     
-    def __init__(self, player1, player2):
+    def __init__(self, player1: Player, player2: Player):
         """
         Initializes a game between two players.
-        
         """
         self.player1 = player1 
         self.player2 = player2
@@ -51,116 +138,124 @@ class GameController:
             'game_state': self.game.dumps(),
             'actions': None,
         })]
-        self.error = None
+
+        self.winner = None
+        self.player_errors = None
+
         self.id = uuid.uuid4()
 
     def get_id(self):
         """
-        returns a id unique to this game
+        Returns a id unique to this game
         """
         return self.id
 
+    def get_results(self):
+        """
+        Returns: 
+        If the game is over, returns a tuple of length 2. The first element is 
+        the username of the winner, or None if it was a tie. The second element 
+        is a tuple containing the username(s) of player(s) that errored during 
+        the game.
+        If the game is not over, return None
+        """
+        if self.game.is_game_over():
+            return self.winner, self.player_errors
+        return None
+
     async def play_game(self):
         """
-        Runs a full game between players.
-        
-        Preconditions: player1 and player2 are not currently in a game
-        Throws: 
-            a PlayerDisconnectError if a player disconnects
-            a PlayerTimeoutError if a player times out
-            a PlayerAlreadyInGameError if a player was already in the game
-        Returns: the username of the winner of the game, or None if it was a tie
-        """
-        if (self.player1.username < self.player2.username):
-            asyncio.acquire(self.player1.username)
-            asyncio.acquire(self.player2.username)
-        else:
-            asyncio.acquire(self.player2.username)
-            asyncio.acquire(self.player1.username)
+        Runs a full game between players. Waits for the games that players are currently in
+        to end before playing the game. 
 
-        if self.player1.status != WAITING or self.player2.status != WAITING:
-            raise TypeError("Expected players to not be in a game")  
-        while self.game.status not in (P1_WIN, P2_WIN, TIE):
+        If a player disconnects or times out during the game, they automatically lose. 
+        If both players disconnect/time out or any one times out before the game, there is a tie.
+        """
+        # acquire player locks in order
+        if (self.player1.username < self.player2.username):
+            asyncio.acquire(self.player1.lock)
+            asyncio.acquire(self.player2.lock)
+        else:
+            asyncio.acquire(self.player2.lock)
+            asyncio.acquire(self.player1.lock)
+        
+        try:
+            # send game begin messages to each player
             try:
-                self.step_turn()
-            except Exception as e:
-                self.error = e
-                raise e
+                await self.player1.send_begin_message(
+                    self.id, self.game.p1_bots, self.game.p2_bots)
+            except:
+                self.player_errors = (self.player1.username,)
+                return
+            try:
+                await self.player2.send_begin_message(
+                    self.id, self.game.p2_bots, self.game.p1_bots
+                )
+            except:
+                self.player_errors = (self.player2.username,)
+                # if player 2 errors but player 1 didn't error, we tell player 1
+                # that the game is over
+                await self.player1.send_game_over(self.get_id(), self.player_errors)
+                return
+            
+            # run the game
+            while not self.game.is_game_over():
+                errors = self.step_turn()
+                if len(errors) > 0:
+                    self.player_errors = errors
+                    if len(errors) == 1 and errors[0] == self.player1.username: # player 1 errored
+                        self.winner = self.player2.username
+                    elif len(errors) == 1: # player 2 errorred
+                        self.winner = self.player1.username
+                break
+            
+            # send game end messages to each player
+            await self.player1.send_game_over(self.get_id(), self.player_errors, self.history)
+            await self.player2.send_game_over(self.get_id(), self.player_errors, self.history)
+        finally:
+            asyncio.release(self.player1.lock)
+            asyncio.release(self.player2.lock)
     
     async def step_turn(self):
         """
-        Steps a single turn of a game between two players
+        Steps a single turn of a game between two players. 
+
+        If an error receiving turn data from a player occurs, returns a tuple
+        containing the username(s) of the player(s) that errored and does not
+        step the turn. If no error occurred, step the turn and return an empty 
+        tuple.
         """
-        player1_msg = json.dumps({
-            "type": "game_update", 
-            "bots": self.game.p1_bots, 
-            "op_bots": self.game.p2_bots, 
-            "errors": self.game.p1_errors
-        })
-        player2_msg = json.dumps({
-            "type": "game_update", 
-            "bots": self.game.p2_bots, 
-            "op_bots": self.game.p1_bots, 
-            "errors": self.game.p2_errors
-        })
-        # [[p1 actions ], []]
+        # receive turn actions
+        # [[p1 actions], [p2 actions]]
         actions = await asyncio.gather(
-                self.player1.do_turn_request(self, player1_msg),
-                self.player2.do_turn_request(self, player2_msg)
-            )
+                self.player1.wait_for_player_turn(),
+                self.player2.wait_for_player_turn(),
+                return_exceptions=True)
+        errors = ()
+        if isinstance(actions[0], Exception):
+            errors += (self.player1.username, )
+        if isinstance(actions[1], Exception):
+            errors += (self.player2.username, )
+        if len(errors) > 0:
+            return errors
+
+        # update the actual game
         self.game.submit_turn(self, *actions)
         self.history.append(json.dumps({
             'game_state': self.game.dumps(), 
             'actions': actions
         }))
 
-    def get_result(self):
-        """
-        Returns some summarized game result 
-        TODO: clarify what return values are
-        """
-        return json.dumps({
-            'history': self.history,
-            'errored': self.error is not None
-        })
-
-class Player:
-    def __init__(self, websocket, username):
-        self.websocket = websocket
-        self.username = username
-        self.status = WAITING
-        self.lock = asyncio.Lock()
-        # self.opponent = None
-        # self.game = None
-        # self.player_num = 0
-    
-    async def do_turn_request(self, turn_message):
-        """
-        Notify the player that they should play a turn, and waits for the result
-        of the player's turn.
-
-        Returns the actions that the player requested for their turn
-
-        Throws an exception if a player disconnects or times out
-        """
-        # TODO: lock on game?
-        try:
-            await self.websocket.send(turn_message)
-        except:
-            raise PlayerDisconnectError()
-        try:
-            response = await asyncio.wait_for(self.websocket.recv(), 1)
-            if (response['type'] == 'turn'):
-                return response['actions']
-        except:
-            raise PlayerTimeoutError()
-        
-    # async def is_connected(self):
-    #     try:
-    #         await asyncio.wait_for(self.websocket.ping(), 1)
-    #     except:
-    #         return False
-    #     return True
-        
-    async def send_game_over(self, winner_username):
-        pass
+        # send game updates
+        game_updates = await asyncio.gather(
+            self.player1.send_game_update(self.id, len(self.history)-1,
+                self.game.p1_bots, self.game.p2_bots, self.game.p1_errors),
+            self.player2.send_game_update(self.id, len(self.history)-1,
+                self.game.p2_bots, self.game.p1_bots, self.game.p2_errors),
+            return_exceptions=True
+        )
+        if isinstance(game_updates[0], Exception):
+            errors += (self.player1.username, )
+        if isinstance(game_updates[1], Exception):
+            errors += (self.player2.username, )
+        return errors

@@ -11,6 +11,8 @@ TURN_OVER, P1_PLAYED, P2_PLAYED, P1_WIN, P2_WIN, TIE = 0, 1, 2, 3, 4, 5
 #Illegal action constants
 INVALID_TARGET, DEAD_TARGET, DEAD_BOT_ACTION, NOT_ENOUGH_AMMO = 0, 1, 2, 3
 
+
+
 def process_actions(attacker_actions, attacker_bots, target_actions, target_bots):   
         new_target_healths = [bot[0] for bot in target_bots]
 
@@ -92,7 +94,23 @@ class Game:
             'p1_errors': self.p1_errors,
             'p2_error': self.p2_errors
         }
-
         return json.dumps(game_rep)
+
+    def is_game_over(self):
+        """
+        Returns if the game has ended or not (e.g in a tie or one player winning)
+        """
+        return self.status in (P1_WIN, P2_WIN, TIE)
+
+    def get_winner(self):
+        """
+        Returns either P1_WIN, P2_WIN, or TIE if the game has ended.
+        Returns None if the game is not over.
+        """
+        if self.is_game_over():
+            return self.status
+        return None
+
+
     def __str__(self):
         return "P1: " + str(self.p1_bots) + ", P2: " + str(self.p2_bots)
