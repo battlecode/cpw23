@@ -38,7 +38,7 @@ class Player:
             "bots": bots,
             "op_bots": op_bots,
             "op_actions": op_actions, 
-            "action_errors": action_errors
+            "errors": action_errors
         }))
 
     async def send_game_over(self, game_id, winner, errors, history):
