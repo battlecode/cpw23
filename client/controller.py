@@ -76,6 +76,18 @@ class Controller:
         """
         return self.opponent_state[bot][1]
     
+    def get_previous_opponent_action(self, bot):
+        """
+        Returns the action the opponent bot with index bot took last round.
+        Action is none for the first turn or if the bot is dead.
+        Args:
+            bot (int): index of bot
+        Returns:
+            dict of form {"type": "none/load/launch/shield", "target": number, "strength": number}
+            For actions other than launch, there will be no target or strength key.
+        """
+        return self.prev_op_actions[bot]
+
     def get_prev_round_errors(self):
         """
         Returns error codes from previous round

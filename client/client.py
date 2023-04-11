@@ -16,6 +16,7 @@ async def play_and_submit_turn(websocket, event, controller, competitor):
     controller.reset()
     controller.player_state = event["bots"]
     controller.opponent_state = event["op_bots"]
+    controller.prev_op_actions = event["op_actions"]
     def parse_round_errors(e):
         error_codes = [-1 for _ in range(len(event["op_bots"]))]
         for code, bot in e:
