@@ -44,7 +44,7 @@ async def consumer(websocket, message):
     elif event["type"] == "game_update" and event['game_id'] == game_id:
         print('game update', event)
         status = PLAYING
-        await play_and_submit_turn(websocket, game_id, event['turn'], event['bots'], event['op_bots'], competitor)
+        await play_and_submit_turn(websocket, game_id, event['turn'], event['bots'], event['op_bots'], event['op_actions'], competitor)
     elif event["type"] == "game_over" and event['game_id'] == game_id:
         game_id = None
         game_history.append(event)
