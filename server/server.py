@@ -54,16 +54,17 @@ async def main():
     async with websockets.serve(handler, "", 8001):
         while True:
             await asyncio.sleep(10)
-            # TODO: uncomment this later autoscrim(players)
+            # TODO: uncomment this later 
+            await autoscrim(players)
 
             # TODO: remove this testing code
-            if len(players) >= 2:
-                # try running a game
-                ppl = list(players.values())[:2]
-                controller = GameController(ppl[0], ppl[1])
-                print('playing game between', ppl[0].username, ppl[1].username)
-                await controller.play_game()
-                print(controller.get_results())
+            # if len(players) >= 2:
+            #     # try running a game
+            #     ppl = list(players.values())[:2]
+            #     controller = GameController(ppl[0], ppl[1])
+            #     print('playing game between', ppl[0].username, ppl[1].username)
+            #     await controller.play_game()
+            #     print(controller.get_results())
             
 
 if __name__ == "__main__":
