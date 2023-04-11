@@ -32,8 +32,9 @@ async def run_tourney(players):
         # remove all queued games
         for game in game_queue:
             match_schedule.discard(game)
-        # run all "waiting" games
-        await waiting_list
+        # run all "waiting" games, if any exist
+        if waiting_list:
+            await waiting_list
 
     # sort first on "won", then on "tied"
     rank_sort = sorted(rankings.items(), key=lambda x:x[1]["won"])
@@ -87,15 +88,9 @@ async def tourney_game(game_queue, competitors, rankings):
     # run our game
     game = GameController(p1, p2)
     await game.play_game()
-    # get our winner & loser
-    winner = game.winner
-    loser = p1 if p1 != game.winner else p2
-    rankings[winner]["played"] += 1
-    rankings[loser]["played"] += 1
-    rankings[winner]["won"] += 1
-    rankings[loser]["lost"] += 1
-    # TODO: Handle ties!
-
+    # apply the results of the game to our rankings
+    handle_outcome(game, rankings)
+    # safely discard this game from our queue (it is completed)
     game_queue.discard(competitors)
 
 
@@ -104,11 +99,27 @@ def handle_outcome(match, rankings):
     Given a GameController that is completed, mutates a rankings 
     dict keyed on player_id to reflect the outcome. 
     """
+    p1 = match.player1
+    p2 = match.player2
     results = match.get_results()
     # if we have no results (game not over), throw error
     # games should always finish before the outcome is handled
-    assert results, f"Game between {match.player1}, {match.player2} Not Finished!"
-    # TODO: handle outcome
+    assert results, f"Game between {p1}, {p2} Not Finished!"
+    # handle win/loss outcome
+    winner = results[0]
+    rankings[p1]["played"] += 1
+    rankings[p2]["played"] += 1
+    # if winner = None, we have a tie
+    if not winner:
+        rankings[p1]["tied"] += 1
+        rankings[p2]["tied"] += 1
+    else:
+        # create holder for loser
+        loser = p1 if p1 != winner else p2
+        # apply results
+        rankings[winner]["won"] += 1
+        rankings[loser]["lost"] += 1
+         
 
 if __name__ == "__main__":
     players = {
