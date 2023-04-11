@@ -18,33 +18,38 @@ async def run_tourney(players):
 
     # intitialize our match queue
     game_queue = set()
+    # intitialize list of awaiting games
+    waiting_list = []
 
     while match_schedule:
         # check for any games that can be run
         for game in match_schedule:
             # make sure each player has no active games
             if not any(check_queue(game_queue, player) for player in game):
-                # add the (p1, p2) game to queue and run
+                # add the (p1, p2) game to queue and append to "waiting list"
                 game_queue.add(game)
-                tourney_game(game_queue, game, rankings)
+                waiting_list = asyncio.gather(*waiting_list, tourney_game(game_queue, game, rankings))
         # remove all queued games
         for game in game_queue:
             match_schedule.discard(game)
+        # run all "waiting" games
+        await waiting_list
 
     # sort first on "won", then on "tied"
     rank_sort = sorted(rankings.items(), key=lambda x:x[1]["won"])
     rank_sort = sorted(rank_sort, lambda x:x[1]["tied"])
     return [ rank[0] for rank in rank_sort ]
 
-    
-def generate_schedule(player_ids):
+
+def generate_schedule(players):
     """
     Generates a match schedule for each player to play against every
     other n-1 players.
-    \nArgs: players, a dictionary of player ids
+    \nArgs: players, a dictionary keyed on player ids
     \nReturns: a set of tuples (player1_id, player2_id), every 2-element
     permutation of player ids.
     """
+    player_ids = generate_players(players)
     match_schedule = set()
     for player_idx, player_id in enumerate(player_ids):
         opponents = player_ids[:player_idx] + player_ids[player_idx+1:]
@@ -92,8 +97,18 @@ async def tourney_game(game_queue, competitors, rankings):
     # TODO: Handle ties!
 
     game_queue.discard(competitors)
-    return
 
+
+def handle_outcome(match, rankings):
+    """
+    Given a GameController that is completed, mutates a rankings 
+    dict keyed on player_id to reflect the outcome. 
+    """
+    results = match.get_results()
+    # if we have no results (game not over), throw error
+    # games should always finish before the outcome is handled
+    assert results, f"Game between {match.player1}, {match.player2} Not Finished!"
+    # TODO: handle outcome
 
 if __name__ == "__main__":
     players = {
