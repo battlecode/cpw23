@@ -18,10 +18,10 @@ async def begin_game(websocket, event):
     global game_id, competitor
     game_id = event['game_id']
     competitor = Competitor()
-    await play_and_submit_turn(websocket, game_id, 0, event['bots'], event['op_bots'], competitor)
+    await play_and_submit_turn(websocket, game_id, 0, event['bots'], event['op_bots'], event['op_actions'], competitor)
 
-async def play_and_submit_turn(websocket, game_id, turn, my_bots, op_bots, competitor):
-    controller = Controller(turn, my_bots, op_bots)
+async def play_and_submit_turn(websocket, game_id, turn, my_bots, op_bots, op_actions, competitor):
+    controller = Controller(turn, my_bots, op_bots, op_actions)
     competitor.play_turn(controller)
     print('submitting turn', controller.actions)
     await websocket.send(json.dumps({
