@@ -4,6 +4,7 @@ import json
 NUM_BOTS = 3
 INITIAL_HEALTH = 5
 SHIELD_HEALTH = 3
+MAX_TURNS = 250
 
 #Game status constants
 TURN_OVER, P1_PLAYED, P2_PLAYED, P1_WIN, P2_WIN, TIE = 0, 1, 2, 3, 4, 5
@@ -50,9 +51,10 @@ class Game:
         self.first_player_actions = None
         self.p1_errors = []
         self.p2_errors = []
+        self.round = 0
 
     def process_turn(self, p1_actions, p2_actions):
-
+        self.round += 1
         new_p2_healths, p1_errors = process_actions(p1_actions, self.p1_bots, p2_actions, self.p2_bots)
         new_p1_healths, p2_errors = process_actions(p2_actions, self.p2_bots, p1_actions, self.p1_bots)
         for bot_id, health in enumerate(new_p1_healths): self.p1_bots[bot_id][0] = health
@@ -62,7 +64,7 @@ class Game:
         return p1_errors, p2_errors
 
     def check_victory(self):
-        if not any(bot[0] for bot in self.p1_bots) and not any(bot[0] for bot in self.p2_bots):
+        if (not any(bot[0] for bot in self.p1_bots) and not any(bot[0] for bot in self.p2_bots)) or self.round >= MAX_TURNS:
             self.status = TIE
         elif not any(bot[0] for bot in self.p1_bots):
             self.status = P2_WIN
