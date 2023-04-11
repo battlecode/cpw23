@@ -1,0 +1,22 @@
+TODO: Write instructions for making a username/sending + accepting invite
+
+WRITING YOUR BOT:
+
+Put all of your code into the Competitor class of competitor.py.
+The play_turn method will be called once per turn, and your bot will take the
+action assigned at the end of its turn. This allows you to select an action and
+choose to override it before the function call ends and your turn locks in.
+Each team starts with 3 bots, with indices 0, 1, 2. 
+
+The actions a bot can take are:
+    - Loading. This gives a bot 1 ammo which it can use to deal 1 damage to an enemy bot.
+    - Launching. This takes in a target enemy bot and an amount of ammo and deals that amount of damage 
+                to the enemy bot.
+    - Shielding. The selected bot shields themselves, meaning they take 3 less damage total that round from enemy attacks.
+                 Enemy attacks can 'stack' to break the shields (like dealing 2 and 2 damage to a shielded target will take 1 health).
+
+Bots cannot take actions while dead. Attempting to take an invalid action will instead do nothing, with the error documented in 
+get_prev_round_errors. If your code takes longer than 1 second to run play_turn, its turn will end and do nothing.
+
+Games that last greater than 250 rounds will automatically end and be considered a tie.
+
