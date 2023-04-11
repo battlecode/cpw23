@@ -69,7 +69,7 @@ def generate_players(players):
 def check_queue(game_queue, player_id):
     """
     Returns whether the given player_id has an ongoing game in the game
-    queue. game_queue is a dictionary keyed on (player1_id, player2_id).
+    queue. game_queue is a set of player_id tuples (p1, p2).
     """
     return any(
         player_id in competitors
