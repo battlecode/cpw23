@@ -24,6 +24,7 @@ class Player:
             "game_id": game_id,
             "bots": bots,
             "op_bots": op_bots,
+            "errors": [-1 for i in range(len(bots))], 
             "op_actions": [{"type":"none"} for i in range(len(bots))]
         }))
     
