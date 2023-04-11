@@ -7,8 +7,8 @@ AMMO = 2
 
 class Competitor:
 
-    prev_opp_sorted = None
-    prev_my_sorted = None
+    prev_opp = None
+    prev_my = None
     protect_idx = [0 for _ in range(3)]
     hurt_idx = [0 for _ in range(3)]
     dead = set()
@@ -39,17 +39,17 @@ class Competitor:
         if self.prev_opp_sorted is not None and self.prev_my_sorted is not None:
             attacked = dict()
             # Which index do they protect the most?
-            for i, (id, health, ammo) in enumerate(self.prev_opp_sorted):
+            for id, health, ammo in self.prev_opp_sorted:
                 prev_action = controller.get_previous_opponent_action(id)
                 if prev_action["type"] == "shield":
-                    self.protect_idx[i] += 1
+                    self.protect_idx[id] += 1
                 if prev_action["type"] == "attack":
                     attacked[prev_action["target"]] = attacked.get(prev_action["target"], 0) + 1
 
 
             # Which index do they attack the most?
-            for i, (id, health, ammo) in enumerate(self.prev_my_sorted):
-                self.protect_idx[i] + attacked.get(id, 0)
+            for id, health, ammo in self.prev_my_sorted:
+                self.protect_idx[id] + attacked.get(id, 0)
 
 
         for i in range(controller.NUM_BOTS):
@@ -68,15 +68,13 @@ class Competitor:
         opp_tot_ammo = sum([i[AMMO] for i in opps])
         my_bots = [(i, controller.get_my_bot_health(i), controller.get_my_bot_ammo(i)) for i in range(controller.NUM_BOTS) if i not in self.dead]
         my_tot_ammo = sum([i[AMMO] for i in my_bots])
-        opp_sorted = sorted(opps, key=lambda x: (x[HEALTH], -x[AMMO]))
-        my_sorted = sorted(my_bots, key=lambda x: (x[HEALTH], -x[AMMO]))
 
 
         def attack():
             # Find which bots I can oneshot
             opp_one_shot_shielded = set()
             opp_one_shot = set()
-            for i, (id, health, _) in enumerate(opp_sorted):
+            for id, health, _ in opps:
                 assert(health != 0)
                 if health <= my_tot_ammo:
                     opp_one_shot.add(id)
@@ -85,15 +83,15 @@ class Competitor:
 
             max_protect = max(self.protect_idx)
             # If they are unlikely to protect a bot that I can oneshot when it's not shielded attack that, otherwise attack the other
-            for i, o in enumerate(opp_sorted[::-1]):
-                if o[ID] in opp_one_shot:
+            for o in opps[::-1]:
+                if opps[ID] in opp_one_shot:
                     if self.protect_idx[i] < max_protect / 3:
-                        print("Attacking bot at index {i} with id {opp[ID]} and health {opp[HEALTH]}")
-                        self.one_shot_bot(self, controller, o[ID], my_sorted, bot_actions, shielded=False)
+                        print("Attacking bot at index {i} with id {o[ID]} and health {o[HEALTH]}")
+                        self.one_shot_bot(self, controller, o[ID], my_bots, bot_actions, shielded=False)
                         return
                 if o[ID] in opp_one_shot_shielded:
                     print("Attacking bot at index {i} with id {opp[ID]} and health {opp[HEALTH]}")
-                    self.one_shot_bot(self, controller, o[ID], my_sorted, bot_actions)
+                    self.one_shot_bot(self, controller, o[ID], my_bots, bot_actions)
                     return
 
         attack()
@@ -108,18 +106,18 @@ class Competitor:
         max_hurt = max(self.hurt_idx)
         max_index = self.hurt_idx.index(max_hurt)
 
-        if opp_tot_ammo > my_sorted[max_index][HEALTH]:
-            id = my_sorted[max_index][ID]
-            if opp_tot_ammo < my_sorted[max_index][HEALTH] + controller.SHIELD_AMOUNT:
+        if opp_tot_ammo > my_bots[max_index][HEALTH]:
+            id = my_bots[max_index][ID]
+            if opp_tot_ammo < my_bots[max_index][HEALTH] + controller.SHIELD_AMOUNT:
                 if not ATTACK_MODE or bot_actions[id] != "LAUNCH":
                     bot_actions[id] = "SHIELD"
                     controller.shield(id)
 
 
         print(bot_actions)
-        self.prev_opp_sorted = opp_sorted
-        self.prev_my_sorted = my_sorted
+        self.prev_opp = opps
+        self.prev_my = my_bots
 
-        self.prev_opp_sorted = [i/self.turn for i in self.prev_opp_sorted]
-        self.prev_my_sorted = [i/self.turn for i in self.prev_my_sorted]
+        self.prev_opp = [i/self.turn for i in self.prev_opp]
+        self.prev_my = [i/self.turn for i in self.prev_my]
 
