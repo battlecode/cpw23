@@ -4,7 +4,7 @@ from player import GameController
 async def run_tourney(players):
     """
     Runs a complete round-robin tournament.
-    \nArgs: players, a dictionary of players ids
+    \nArgs: players, a dictionary keyed on player ids
     \nReturns: a list of player ids in descending rank order
     """
     player_ids = generate_players(players)
@@ -119,15 +119,3 @@ def handle_outcome(match, rankings):
         # apply results
         rankings[winner]["won"] += 1
         rankings[loser]["lost"] += 1
-         
-
-if __name__ == "__main__":
-    players = {
-        1: "whee",
-        2: "gamer",
-        3: "biggie smalls",
-        4: "yo mama",
-        5: "codemonkey",
-        6: "sheesh",
-    }
-    print(generate_schedule(players))
