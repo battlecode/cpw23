@@ -32,7 +32,7 @@ class Controller:
         return self.player_state[bot][1]
 
     def get_opponent_bot_health(self, bot):
-        return self.opponent_healths(bot)
+        return self.opponent_healths[bot]
     
     def get_opponent_previous_action(self, bot):
         """
