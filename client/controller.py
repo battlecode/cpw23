@@ -4,13 +4,13 @@ class Controller:
     INITIAL_HEALTH, SHIELD_HEALTH = 5, 3
     NO_ERROR, INVALID_TARGET, DEAD_TARGET, DEAD_BOT_ACTION, NOT_ENOUGH_AMMO = -1, 0, 1, 2, 3
 
-    def __init__(self, turn, my_bots, op_bots, op_actions):
+    def __init__(self, turn, my_bots, op_bots, op_actions, errors):
         self.turn = turn
         self.actions = [{"type": "none"} for _ in range(self.NUM_BOTS)]
         self.player_state = my_bots
         self.opponent_state = op_bots
         self.opponent_actions = op_actions
-        self.prev_round_errors = [-1 for _ in range(self.NUM_BOTS)]
+        self.prev_round_errors = errors
 
     def reset(self):
         self.actions = [{"type": "none"} for _ in range(self.NUM_BOTS)]
