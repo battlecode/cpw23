@@ -4,11 +4,13 @@ import json
 import time
 from competitor import Competitor
 from controller import Controller
+from visualizer import Visualizer
 
 WAITING, RECEIVED_INVITE, PLAYING = 0, 1, 2
 
 status = WAITING
 controller = None
+visualizer = Visualizer()
 competitor = Competitor()
 
 async def play_and_submit_turn(websocket, event, controller, competitor):
@@ -80,4 +82,6 @@ async def main():
         await handler(websocket)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    def execute():
+        asyncio.run(main())
+    visualizer.run(execute)
