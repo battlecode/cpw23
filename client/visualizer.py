@@ -2,6 +2,7 @@ import curses
 from curses.textpad import rectangle
 import time
 from controller import Controller
+import traceback
 
 # Style constants
 BAR_CELL_WIDTH = 2
@@ -10,6 +11,7 @@ BOT_SPACING = 5
 # Color pair constants
 HEALTH_FILLED = 1
 HEALTH_EMPTY = 2
+LOG_TEXT = 3
 
 ASCII_BOT_SIZE = (6, 3)
 ASCII_BOTS = ["""
@@ -68,6 +70,11 @@ class Visualizer:
             #state["op_actions"],
             #state["actions"]
         )
+        self._draw_log(
+            (5, 25), 
+            "This is the test log content This is the test log content This is the test log content This is the test log content",
+            curses.color_pair(LOG_TEXT) | curses.A_BOLD
+        )
 
         self.scr.refresh()
 
@@ -115,6 +122,25 @@ class Visualizer:
 
             start_x = end_x
 
+    def _draw_log(self, pos, text, args=0):
+        # get console width curses
+        width = min(curses.COLS - 2 * pos[0] - 2, 100)
+        textLines = []
+        for i in range(0, len(text), width):
+            textLines.append(text[i:i + width])
+        height = max(3, len(textLines))
+        # draw a box around the log
+        try:
+            rectangle(self.scr, pos[1] - 1, pos[0] - 1, pos[1] + 1 + height, pos[0] + width + 1)
+        except curses.error:
+            pass
+        # draw the text in the rectangle
+        for i, line in enumerate(textLines):
+            try:
+                self.scr.addstr(pos[1] + i, pos[0], line, args)
+            except curses.error:
+                pass
+
     def _draw_bar(self, pos, cur, max, color_filled, color_empty):
         """
         Render a progress bar
@@ -146,6 +172,7 @@ class Visualizer:
         curses.use_default_colors()
         curses.init_pair(HEALTH_FILLED, curses.COLOR_WHITE, curses.COLOR_RED)
         curses.init_pair(HEALTH_EMPTY, curses.COLOR_WHITE, curses.COLOR_WHITE)
+        curses.init_pair(LOG_TEXT, curses.COLOR_RED, -1)
 
     def _curses_main(self, scr, callback):
         """
@@ -173,5 +200,6 @@ if __name__ == "__main__":
         vis.run(execute)
     except KeyboardInterrupt:
         print("Exiting...")
-    except:
-        print("Error launching visualizer")
+    except Exception as e:
+        print("\nError launching visualizer!!!\n")
+        print(traceback.format_exc())
