@@ -1,14 +1,18 @@
 
+import json
 #Gameplay constants
 NUM_BOTS = 3
 INITIAL_HEALTH = 5
 SHIELD_HEALTH = 3
+MAX_TURNS = 250
 
 #Game status constants
 TURN_OVER, P1_PLAYED, P2_PLAYED, P1_WIN, P2_WIN, TIE = 0, 1, 2, 3, 4, 5
 
 #Illegal action constants
 INVALID_TARGET, DEAD_TARGET, DEAD_BOT_ACTION, NOT_ENOUGH_AMMO = 0, 1, 2, 3
+
+
 
 def process_actions(attacker_actions, attacker_bots, target_actions, target_bots):   
         new_target_healths = [bot[0] for bot in target_bots]
@@ -35,6 +39,8 @@ def process_actions(attacker_actions, attacker_bots, target_actions, target_bots
         #Reset bots to original health if they have shield health remaining
         for i, health in enumerate(new_target_healths):
             if health > target_bots[i][0]: new_target_healths[i] = target_bots[i][0]
+        
+        
 
         return new_target_healths, errors
 
@@ -45,43 +51,76 @@ class Game:
         self.p2_bots = [[INITIAL_HEALTH, 0] for _ in range(NUM_BOTS)]
         self.status = TURN_OVER
         self.first_player_actions = None
+        self.p1_errors = []
+        self.p2_errors = []
+        self.round = 0
 
-    def process_turn(self, actions):
-        if self.status == P1_PLAYED:
-            p1_actions = self.first_player_actions
-            p2_actions = actions
-        else:
-            p1_actions = actions
-            p2_actions = self.first_player_actions
-
+    def process_turn(self, p1_actions, p2_actions):
+        self.round += 1
         new_p2_healths, p1_errors = process_actions(p1_actions, self.p1_bots, p2_actions, self.p2_bots)
         new_p1_healths, p2_errors = process_actions(p2_actions, self.p2_bots, p1_actions, self.p1_bots)
-        for bot_id, health in enumerate(new_p1_healths): self.p1_bots[bot_id][0] = health
-        for bot_id, health in enumerate(new_p2_healths): self.p2_bots[bot_id][0] = health
+        for bot_id, health in enumerate(new_p1_healths): 
+            self.p1_bots[bot_id][0] = health
+            if health == 0:
+                self.p1_bots[bot_id][1] = 0
+        for bot_id, health in enumerate(new_p2_healths): 
+            self.p2_bots[bot_id][0] = health
+            if health == 0:
+                self.p2_bots[bot_id][1] = 0
+        self.p1_errors = p1_errors
+        self.p2_errors = p2_errors
         return p1_errors, p2_errors
 
     def check_victory(self):
-        if not any(bot[0] for bot in self.p1_bots) and not any(bot[0] for bot in self.p2_bots):
+        if (not any(bot[0] for bot in self.p1_bots) and not any(bot[0] for bot in self.p2_bots)) or self.round >= MAX_TURNS:
             self.status = TIE
         elif not any(bot[0] for bot in self.p1_bots):
             self.status = P2_WIN
         elif not any(bot[0] for bot in self.p2_bots):
             self.status = P1_WIN
     
-    def submit_turn(self, player_num, actions):
-        assert len(actions) == NUM_BOTS
+    def submit_turn(self, p1_actions, p2_actions):
+        assert len(p1_actions) == NUM_BOTS
+        assert len(p2_actions) == NUM_BOTS
 
-        if self.status == TURN_OVER: 
-            #First player is submitting their actions, so do nothing besides record them for now
-            self.first_player_actions = actions
-            self.status = P1_PLAYED if player_num == 1 else P2_PLAYED
-            return [], []
-        elif (self.status == P2_PLAYED and player_num == 1) or (self.status == P1_PLAYED and player_num == 2):
-            #Second player is submitting their actions, so process game round
-            p1_errors, p2_errors = self.process_turn(actions)
-            self.status = TURN_OVER
-            self.check_victory()
-            return p1_errors, p2_errors
+        #Second player is submitting their actions, so process game round
+        p1_errors, p2_errors = self.process_turn(p1_actions, p2_actions)
+        self.status = TURN_OVER
+        self.check_victory()
+        return p1_errors, p2_errors
+            
+
+    def get_bots(self, player):
+        """
+        Returns the 
+        """
+        # {"type": "game_update", "bots": player_bots, "op_bots": opponent_bots, "errors": player_errors}
+
+    def dumps(self):
+        game_rep = {
+            'p1_bots': self.p1_bots,
+            'p2_bots': self.p2_bots,
+            'status': self.status,
+            'p1_errors': self.p1_errors,
+            'p2_error': self.p2_errors
+        }
+        return json.dumps(game_rep)
+
+    def is_game_over(self):
+        """
+        Returns if the game has ended or not (e.g in a tie or one player winning)
+        """
+        return self.status in (P1_WIN, P2_WIN, TIE)
+
+    def get_winner(self):
+        """
+        Returns either P1_WIN, P2_WIN, or TIE if the game has ended.
+        Returns None if the game is not over.
+        """
+        if self.is_game_over():
+            return self.status
+        return None
+
 
     def __str__(self):
         return "P1: " + str(self.p1_bots) + ", P2: " + str(self.p2_bots)

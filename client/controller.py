@@ -1,11 +1,16 @@
-
 class Controller:
+
     NUM_BOTS = 3
+    INITIAL_HEALTH, SHIELD_HEALTH = 5, 3
     NO_ERROR, INVALID_TARGET, DEAD_TARGET, DEAD_BOT_ACTION, NOT_ENOUGH_AMMO = -1, 0, 1, 2, 3
 
-    def __init__(self):
-        self.prev_round_errors = [-1 for _ in range(self.NUM_BOTS)]
+    def __init__(self, turn, my_bots, op_bots, op_actions, errors):
+        self.turn = turn
         self.actions = [{"type": "none"} for _ in range(self.NUM_BOTS)]
+        self.player_state = my_bots
+        self.opponent_state = op_bots
+        self.opponent_actions = op_actions
+        self.prev_round_errors = errors
 
     def reset(self):
         self.actions = [{"type": "none"} for _ in range(self.NUM_BOTS)]
@@ -35,6 +40,9 @@ class Controller:
             bot (int): index of bot
         """
         self.actions[bot] = {"type": "shield"}
+    
+    def get_turn_num(self):
+        return self.turn
 
     def get_my_bot_health(self, bot):
         """
@@ -76,18 +84,18 @@ class Controller:
         """
         return self.opponent_state[bot][1]
     
-    def get_previous_opponent_action(self, bot):
+    def get_opponent_previous_action(self, bot):
         """
-        Returns the action the opponent bot with index bot took last round.
-        Action is none for the first turn or if the bot is dead.
+        Returns the action the opponent bot at index bot took last round.
+        Action is none for the first turn or if the specified bot is dead.
         Args:
             bot (int): index of bot
         Returns:
             dict of form {"type": "none/load/launch/shield", "target": number, "strength": number}
             For actions other than launch, there will be no target or strength key.
         """
-        return self.prev_op_actions[bot]
-
+        return self.opponent_actions[bot]
+    
     def get_prev_round_errors(self):
         """
         Returns error codes from previous round
@@ -95,5 +103,3 @@ class Controller:
             (list[int]): element at i corresponds to error code for bot i in previous round
         """
         return self.prev_round_errors
-    
-    

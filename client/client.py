@@ -6,53 +6,64 @@ from competitor import Competitor
 from controller import Controller
 from visualizer import Visualizer
 
-WAITING, RECEIVED_INVITE, PLAYING = 0, 1, 2
+WAITING, PLAYING = 0, 1
 
 status = WAITING
-controller = None
+game_id = None
+competitor = None
+username = str(time.time())
+game_history = []
 visualizer = Visualizer()
-competitor = Competitor()
 
-async def play_and_submit_turn(websocket, event, controller, competitor):
-    if controller == None: controller = Controller()
-    controller.reset()
-    controller.player_state = event["bots"]
-    controller.opponent_state = event["op_bots"]
-    controller.prev_op_actions = event["op_actions"]
-    def parse_round_errors(e):
-        error_codes = [-1 for _ in range(len(event["op_bots"]))]
-        for code, bot in e:
-            error_codes[bot] = code
-        return error_codes
-    controller.prev_round_errors = parse_round_errors(event["errors"])
+async def begin_game(websocket, event):
+    print('received begin message', event)
+    global game_id, competitor
+    game_id = event['game_id']
+    competitor = Competitor()
+    await play_and_submit_turn(websocket, game_id, 0, event['bots'], event['op_bots'], event['op_actions'], event['errors'], competitor)
+
+async def play_and_submit_turn(websocket, game_id, turn, my_bots, op_bots, op_actions, errors, competitor):
+    controller = Controller(turn, my_bots, op_bots, op_actions, errors)
     competitor.play_turn(controller)
-    await websocket.send(json.dumps({"type": "turn", "actions": controller.actions}))
+    print('submitting turn', controller.actions)
+    await websocket.send(json.dumps({
+        "type": "turn", 
+        'game_id': game_id, 
+        'turn': turn,
+        "actions": controller.actions}))
 
 async def consumer(websocket, message):
     #This is sub-optimal, but there is no easy way around it
-    global status, controller, competitor
+    global status, competitor, game_id
     event = json.loads(message)
 
-    if event["type"] == "send_invite":
-        status = RECEIVED_INVITE
-        print(event["user"], "has invited you. Enter y/n to respond.")
-    elif event["type"] == "game_update":
-        print(message)
+    if event["type"] == "login" and not event['success']:
+        websocket.close()
+        print(f'The username "{username}" is already in use. Please use a different username.')
+    elif event['type'] == 'begin_game':
+        print('beginning game', event)
+        await begin_game(websocket, event)
+    elif event["type"] == "game_update" and event['game_id'] == game_id:
+        print('game update', event)
         status = PLAYING
-        await play_and_submit_turn(websocket, event, controller, competitor)
-    elif event["type"] == "game_over":
+        def parse_round_errors(e):
+            error_codes = [-1 for _ in range(len(event["op_bots"]))]
+            for code, bot in e:
+                error_codes[bot] = code
+            return error_codes
+        await play_and_submit_turn(websocket, game_id, event['turn'], event['bots'], event['op_bots'], event['op_actions'], 
+                                   parse_round_errors(event["errors"]), competitor)
+    elif event["type"] == "game_over" and event['game_id'] == game_id:
+        game_id = None
+        game_history.append(event)
         status = WAITING
-        print("Game over. Outcome:", event["outcome"])
+        print(f"Game over. Winner: {event['winner']}, Errors: {event['errors']}")
     else: 
         status = WAITING
 
 async def producer():
     while True:
         command = await asyncio.get_event_loop().run_in_executor(None, lambda: input().split())
-        if status == RECEIVED_INVITE:
-            return json.dumps({"type": "invite_response", "accept": command[0].lower() == 'y'})
-        elif command[0] == "invite":
-            return json.dumps({"type": "create_invite", "opponent": command[1]})
 
 async def consumer_handler(websocket):
     async for message in websocket:
@@ -65,7 +76,7 @@ async def producer_handler(websocket):
 
 async def handler(websocket):
     #TODO for testing, set player username to the current time so that we don't have to make another copy of competitior script
-    await websocket.send(json.dumps({"type": "login", "user": str(time.time())}))
+    await websocket.send(json.dumps({"type": "login", "user": username}))
 
     consumer_task = asyncio.create_task(consumer_handler(websocket))
     producer_task = asyncio.create_task(producer_handler(websocket))
