@@ -9,33 +9,19 @@ async def run_tourney(players):
     """
     player_ids = generate_players(players)
     match_schedule = generate_schedule(player_ids)
-
     # player rankings: { player_id: { "played":, "won":, "lost":, } }
     rankings = { 
         player: { "played": 0, "won": 0, "lost": 0, "tied": 0, } 
         for player in player_ids 
     }
-
-    # intitialize our match queue
-    game_queue = set()
     # intitialize list of awaiting games
     waiting_list = []
-
-    while match_schedule:
-        # check for any games that can be run
-        for game in match_schedule:
-            # make sure each player has no active games
-            if not any(check_queue(game_queue, player) for player in game):
-                # add the (p1, p2) game to queue and append to "waiting list"
-                game_queue.add(game)
-                waiting_list = asyncio.gather(*waiting_list, tourney_game(game_queue, game, rankings))
-        # remove all queued games
-        for game in game_queue:
-            match_schedule.discard(game)
-        # run all "waiting" games, if any exist
-        if waiting_list:
-            await waiting_list
-
+    # make a list of our game runnables
+    for match in match_schedule:
+        waiting_list = asyncio.gather(*waiting_list, tourney_game(match, rankings))
+    # run all games
+    if waiting_list:
+        await waiting_list
     # sort first on "won", then on "tied"
     rank_sort = sorted(rankings.items(), key=lambda x:x[1]["won"])
     rank_sort = sorted(rank_sort, lambda x:x[1]["tied"])
@@ -66,18 +52,7 @@ def generate_players(players):
     return [ player for player in players ]
 
 
-def check_queue(game_queue, player_id):
-    """
-    Returns whether the given player_id has an ongoing game in the game
-    queue. game_queue is a set of player_id tuples (p1, p2).
-    """
-    return any(
-        player_id in competitors
-        for competitors in game_queue
-    )
-
-
-async def tourney_game(game_queue, competitors, rankings):
+async def tourney_game(competitors, rankings):
     """
     Given a tuple of competitors and a rankings dict, run a game between them.
     Mutate rankings with each players' match results.
@@ -86,12 +61,10 @@ async def tourney_game(game_queue, competitors, rankings):
     # get our two competitors
     p1, p2 = competitors
     # run our game
-    game = GameController(p1, p2)
-    await game.play_game()
+    match = GameController(p1, p2)
+    await match.play_game()
     # apply the results of the game to our rankings
-    handle_outcome(game, rankings)
-    # safely discard this game from our queue (it is completed)
-    game_queue.discard(competitors)
+    handle_outcome(match, rankings)
 
 
 def handle_outcome(match, rankings):
