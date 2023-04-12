@@ -191,4 +191,9 @@ if __name__ == "__main__":
             time.sleep(0.5)
             pass
 
-    vis.run(execute)
+    try:
+        vis.run(execute)
+    except KeyboardInterrupt:
+        print("Exiting...")
+    except: 
+        print("Error launching visualizer - try increasing your terminal size")
