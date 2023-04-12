@@ -1,15 +1,37 @@
 import curses
 from curses.textpad import rectangle
 import time
+from controller import Controller
 
 
 # Style constants
 HEALTH_CELL_WIDTH = 2
+HEALTHBAR_SPACING = 4
 
 
 # Color pair constants
 HEALTH_FILLED = 1
 HEALTH_EMPTY = 2
+
+
+ASCII_BOT_SIZE = (6, 3)
+ASCII_BOTS = [
+    """
+ [@@]
+/|__|\\
+ d  b
+    """,
+    """
+ [oo]
+/|##|\\
+ d  b
+    """,
+    """
+ [**]
+/|--|\\
+ d  b
+    """
+]
 
 
 class Visualizer:
@@ -40,34 +62,61 @@ class Visualizer:
         Args:
             state: Game state as defined in server/server.py
         """
-        rectangle(self.scr, 5, 5, 10, 10)
-        for i in range(10):
-            self._draw_health((5, 5), (3, 5))
-            time.sleep(0.5)
-            self.scr.refresh()
+        # rectangle(self.scr, 5, 5, 10, 10)
+        self._draw_team((5, 5), state["bots"])
+        self._draw_team((5, 20), state["op_bots"])
+        self.scr.refresh()
+
+    def _draw_multiline_text(self, pos, text, args=0):
+        for i, line in enumerate(text.split('\n')):
+            if line:
+                self.scr.addstr(pos[1] + i, pos[0], line, args)
+
+    def _draw_team(self, pos, bots):
+        start_x = pos[0]
+        for i, bot in enumerate(bots):
+            end_x = self._draw_health(
+                (start_x, pos[1]), bot[0]
+            ) + HEALTHBAR_SPACING
+
+            middle = start_x + (end_x - start_x) // 2
+            self._draw_multiline_text(
+                (
+                    middle - ASCII_BOT_SIZE[0] + 1,
+                    pos[1] - ASCII_BOT_SIZE[1] - 2
+                ),
+                ASCII_BOTS[i % len(ASCII_BOTS)]
+            )
+
+            start_x = end_x
 
     def _draw_health(self, pos, health):
         """
         Render a health bar
 
         Args:
-            screen: curses screen context
+            screen: Curses screen context
             pos (tuple(int, int)): x and y pos of left side of rendered bar
-            health (tuple(int, int)): cur, max health
+            health (int): Current helth
+
+        Returns (int):
+            x coordinate directly after the end of the bar
         """
-        filled = health[0] * HEALTH_CELL_WIDTH
+        filled = health * HEALTH_CELL_WIDTH
         self.scr.addstr(
             pos[1], pos[0],
             " " * filled,
             curses.color_pair(HEALTH_FILLED)
         )
 
-        empty = health[1] - health[0]
+        empty = Controller.INITIAL_HEALTH - health
         self.scr.addstr(
             pos[1], pos[0] + filled,
             " " * empty * HEALTH_CELL_WIDTH,
             curses.color_pair(HEALTH_EMPTY)
         )
+
+        return pos[0] + filled + empty * HEALTH_CELL_WIDTH
 
     def _init_colors(self):
         """
@@ -94,7 +143,12 @@ if __name__ == "__main__":
 
     def execute():
         while True:
-            vis.render_game(None)
+            state = {
+                "bots": [[2], [3], [4]],
+                "op_bots": [[5], [0], [2]]
+            }
+            vis.render_game(state)
+            time.sleep(0.5)
             pass
 
     vis.run(execute)
