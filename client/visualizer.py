@@ -6,13 +6,12 @@ from controller import Controller
 
 # Style constants
 BAR_CELL_WIDTH = 2
-BOT_SPACING = 5
+BOT_SPACING = 7
 
 
 # Color pair constants
 HEALTH_FILLED = 1
 HEALTH_EMPTY = 2
-
 
 ASCII_BOT_SIZE = (6, 3)
 ASCII_BOTS = [
@@ -64,16 +63,16 @@ class Visualizer:
         """
         # rectangle(self.scr, 5, 5, 10, 10)
         self._draw_team(
-            (5, 5),
+            (5, 8),
             state["bots"],
-            #state["actions"],
-            #state["op_actions"]
+            state["actions"],
+            # state["op_actions"]
         )
         self._draw_team(
-            (5, 20),
+            (5, 23),
             state["op_bots"],
-            #state["op_actions"],
-            #state["actions"]
+            state["op_actions"],
+            # state["actions"]
         )
 
         self.scr.refresh()
@@ -96,15 +95,15 @@ class Visualizer:
             if line:
                 self.scr.addstr(pos[1] + i, pos[0], line, args)
 
-    def _draw_team(self, pos, bots): #, actions, opp_actions):
+    def _draw_team(self, pos, bots, actions): #, opp_actions):
         start_x = pos[0]
-        for i, bot in enumerate(bots):
+        for i, (bot, action) in enumerate(zip(bots, actions)):
             # Health bar
             end_x = self._draw_bar(
                 (start_x, pos[1]),
                 bot[0], Controller.INITIAL_HEALTH,
                 HEALTH_FILLED, HEALTH_EMPTY
-            ) + BOT_SPACING
+            )
 
             # Shield bar
             """
@@ -115,17 +114,26 @@ class Visualizer:
                 pass
             """
 
-            # Render bot
             middle = start_x + (end_x - start_x) // 2
-            self._draw_multiline_text(
-                (
-                    middle - ASCII_BOT_SIZE[0] + 1,
-                    pos[1] - ASCII_BOT_SIZE[1] - 2
-                ),
-                ASCII_BOTS[i % len(ASCII_BOTS)]
-            )
+            bot_x = middle - ASCII_BOT_SIZE[0] // 2
+            bot_y = pos[1] - ASCII_BOT_SIZE[1] - 2
 
-            start_x = end_x
+            # Render bot
+            self._draw_multiline_text((bot_x, bot_y), ASCII_BOTS[i % len(ASCII_BOTS)])
+
+            if action["type"] == "load":
+                action_text = f"\nLoading\n"
+            elif action["type"] == "launch":
+                action_text = f"Launching at\n{action['target']} w/ {action['strength']} ammo\n"
+            else:
+                action_text = "\nShielding\n"
+
+            action_x = middle - max([len(text) for text in action_text.split('\n')]) // 2
+            action_y = bot_y - 2
+
+            self._draw_multiline_text((action_x, action_y), action_text)
+
+            start_x = end_x + BOT_SPACING
 
     def _draw_bar(self, pos, cur, max, color_filled, color_empty):
         """
@@ -185,7 +193,13 @@ if __name__ == "__main__":
         while True:
             state = {
                 "bots": [[2], [3], [4]],
-                "op_bots": [[5], [0], [2]]
+                "op_bots": [[5], [0], [2]],
+                "actions": [{"type": "load", "target": 0, "strength": 1},
+                            {"type": "launch", "target": 1, "strength": 3},
+                            {"type": "shield", "target": 2, "strength": 1}],
+                "op_actions": [{"type": "load", "target": 0, "strength": 1},
+                               {"type": "launch", "target": 2, "strength": 1},
+                               {"type": "shield", "target": 2, "strength": 1}],
             }
             vis.render_game(state)
             time.sleep(0.5)
