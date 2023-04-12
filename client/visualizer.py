@@ -72,7 +72,7 @@ class Visualizer:
         )
         self._draw_log(
             (5, 25), 
-            "This is the test log content This is the test log content This is the test log content This is the test log content",
+            str(state),
             curses.color_pair(LOG_TEXT) | curses.A_BOLD
         )
 
