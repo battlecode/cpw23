@@ -3,35 +3,28 @@ from curses.textpad import rectangle
 import time
 from controller import Controller
 
-
 # Style constants
 BAR_CELL_WIDTH = 2
 BOT_SPACING = 5
-
 
 # Color pair constants
 HEALTH_FILLED = 1
 HEALTH_EMPTY = 2
 
-
 ASCII_BOT_SIZE = (6, 3)
-ASCII_BOTS = [
-    """
+ASCII_BOTS = ["""
  [@@]
 /|__|\\
  d  b
-    """,
-    """
+    """, """
  [oo]
 /|##|\\
  d  b
-    """,
-    """
+    """, """
  [**]
 /|--|\\
  d  b
-    """
-]
+    """]
 
 
 class Visualizer:
@@ -92,19 +85,19 @@ class Visualizer:
         return max(health, 0)
 
     def _draw_multiline_text(self, pos, text, args=0):
-        for i, line in enumerate(text.split('\n')):
-            if line:
-                self.scr.addstr(pos[1] + i, pos[0], line, args)
+        try:
+            for i, line in enumerate(text.split('\n')):
+                if line:
+                    self.scr.addstr(pos[1] + i, pos[0], line, args)
+        except curses.error:
+            pass
 
-    def _draw_team(self, pos, bots): #, actions, opp_actions):
+    def _draw_team(self, pos, bots):  #, actions, opp_actions):
         start_x = pos[0]
         for i, bot in enumerate(bots):
             # Health bar
             end_x = self._draw_bar(
-                (start_x, pos[1]),
-                bot[0], Controller.INITIAL_HEALTH,
-                HEALTH_FILLED, HEALTH_EMPTY
-            ) + BOT_SPACING
+                (start_x, pos[1]), bot[0], Controller.INITIAL_HEALTH, HEALTH_FILLED, HEALTH_EMPTY) + BOT_SPACING
 
             # Shield bar
             """
@@ -117,13 +110,8 @@ class Visualizer:
 
             # Render bot
             middle = start_x + (end_x - start_x) // 2
-            self._draw_multiline_text(
-                (
-                    middle - ASCII_BOT_SIZE[0] + 1,
-                    pos[1] - ASCII_BOT_SIZE[1] - 2
-                ),
-                ASCII_BOTS[i % len(ASCII_BOTS)]
-            )
+            self._draw_multiline_text((middle - ASCII_BOT_SIZE[0] + 1, pos[1] - ASCII_BOT_SIZE[1] - 2),
+                                      ASCII_BOTS[i % len(ASCII_BOTS)])
 
             start_x = end_x
 
@@ -143,19 +131,12 @@ class Visualizer:
             x coordinate directly after the end of the bar
         """
         filled = cur * BAR_CELL_WIDTH
-        self.scr.addstr(
-            pos[1], pos[0],
-            " " * filled,
-            curses.color_pair(color_filled)
-        )
-
         empty = max - cur
-        self.scr.addstr(
-            pos[1], pos[0] + filled,
-            " " * empty * BAR_CELL_WIDTH,
-            curses.color_pair(color_empty)
-        )
-
+        try:
+            self.scr.addstr(pos[1], pos[0], " " * filled, curses.color_pair(color_filled))
+            self.scr.addstr(pos[1], pos[0] + filled, " " * empty * BAR_CELL_WIDTH, curses.color_pair(color_empty))
+        except curses.error:
+            pass
         return pos[0] + filled + empty * BAR_CELL_WIDTH
 
     def _init_colors(self):
@@ -183,10 +164,7 @@ if __name__ == "__main__":
 
     def execute():
         while True:
-            state = {
-                "bots": [[2], [3], [4]],
-                "op_bots": [[5], [0], [2]]
-            }
+            state = {"bots": [[2], [3], [4]], "op_bots": [[5], [0], [2]]}
             vis.render_game(state)
             time.sleep(0.5)
             pass
@@ -195,5 +173,5 @@ if __name__ == "__main__":
         vis.run(execute)
     except KeyboardInterrupt:
         print("Exiting...")
-    except: 
-        print("Error launching visualizer - try increasing your terminal size")
+    except:
+        print("Error launching visualizer")
