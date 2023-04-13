@@ -188,6 +188,7 @@ class Visualizer:
             # Render bot
             self._draw_multiline_text((bot_x, bot_y), ASCII_BOTS[i % len(ASCII_BOTS)])
 
+            # Bot actions
             if action["type"] == "load":
                 action_text = f"\nLoading\n"
             elif action["type"] == "launch":
@@ -196,9 +197,15 @@ class Visualizer:
                 action_text = "\nShielding\n"
 
             action_x = middle - max([len(text) for text in action_text.split('\n')]) // 2
-            action_y = bot_y - 2
+            action_y = bot_y - 3
 
             self._draw_multiline_text((action_x, action_y), action_text)
+
+            # Bot ammo
+            ammo_text = f"Bot Ammo: {bot[1]}"
+            ammo_x = middle - len(ammo_text)//2
+            ammo_y = bot_y - 1
+            self._draw_multiline_text((ammo_x, ammo_y), ammo_text)
 
             start_x = end_x + BOT_SPACING
 
@@ -288,8 +295,8 @@ if __name__ == "__main__":
     def execute():
         while True:
             state = {
-                "bots": [[2], [3], [4]],
-                "op_bots": [[5], [0], [2]],
+                "bots": [[2, 1], [3, 2], [4, 3]],
+                "op_bots": [[5, 4], [0, 5], [2, 6]],
                 "actions": [{"type": "load", "target": 0, "strength": 1},
                             {"type": "launch", "target": 1, "strength": 3},
                             {"type": "shield", "target": 2, "strength": 1}],
