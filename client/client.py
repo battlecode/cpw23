@@ -26,6 +26,7 @@ async def begin_game(websocket, event):
     await play_and_submit_turn(websocket, game_id, 0, event['bots'], event['op_bots'], event['op_actions'], event['errors'], competitor)
 
 async def play_and_submit_turn(websocket, game_id, turn, my_bots, op_bots, op_actions, errors, competitor):
+    global last_actions
     controller = Controller(turn, my_bots, op_bots, op_actions, errors)
     competitor.play_turn(controller)
     if ENABLE_PRINT:

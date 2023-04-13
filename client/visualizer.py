@@ -18,6 +18,8 @@ BOT_SPACING = 7
 HEALTH_FILLED = 1
 HEALTH_EMPTY = 2
 LOG_TEXT = 3
+SHIELD_FILLED = 4
+SHIELD_EMPTY = 5
 
 ASCII_BOT_SIZE = (6, 3)
 ASCII_BOTS = ["""
@@ -45,7 +47,7 @@ class Visualizer:
         self.last_autorun = datetime.now()
 
         threading.Thread(target=self.loop.run_forever).start()
-        self._handle_input()
+        self._update()
 
     def cleanup(self):
         self.loop.call_soon_threadsafe(self.loop.stop)
@@ -77,27 +79,29 @@ class Visualizer:
         Args:
             state: Game state as defined in server/server.py
         """
+        self.scr.clear()
         self._draw_team(
-            (5, 8),
+            (5, 10),
             state["bots"],
             state["actions"],
-            # state["op_actions"]
+            state["op_actions"]
         )
         self._draw_team(
             (5, 23),
             state["op_bots"],
             state["op_actions"],
-            # state["actions"]
+            state["actions"]
         )
         self._draw_log(
-            (5, 25), 
+            (5, 30), 
             str(state),
             curses.color_pair(LOG_TEXT) | curses.A_BOLD
         )
+        self._draw_info((60, 0))
 
         self.scr.refresh()
 
-    def _handle_input(self):
+    def _update(self):
         if self.scr:
             input = self.scr.getch()
 
@@ -115,8 +119,12 @@ class Visualizer:
 
             if self.commands:
                 self.commands[self.command_idx]()
+            else:
+                self.scr.clear()
+                self._draw_info((0, 0))
+                self.scr.refresh()
 
-        self._run_task(self._handle_input)
+        self._run_task(self._update)
 
     def _submit_command(self, cmd):
         def add():
@@ -151,7 +159,7 @@ class Visualizer:
         except curses.error:
             pass
 
-    def _draw_team(self, pos, bots, actions): #, opp_actions):
+    def _draw_team(self, pos, bots, actions, opp_actions):
         start_x = pos[0]
         for i, (bot, action) in enumerate(zip(bots, actions)):
             # Health bar
@@ -161,18 +169,21 @@ class Visualizer:
                 HEALTH_FILLED, HEALTH_EMPTY
             )
 
+            middle = start_x + (end_x - start_x) // 2
+            bot_x = middle - ASCII_BOT_SIZE[0] // 2
+            bot_y = pos[1] - ASCII_BOT_SIZE[1] - 2
+
             # Shield bar
-            """
             shield_health = self._get_shield_health(
                 actions, opp_actions, i
             )
             if shield_health is not None:
-                pass
-            """
-
-            middle = start_x + (end_x - start_x) // 2
-            bot_x = middle - ASCII_BOT_SIZE[0] // 2
-            bot_y = pos[1] - ASCII_BOT_SIZE[1] - 2
+                start = middle - (Controller.SHIELD_HEALTH * BAR_CELL_WIDTH) // 2
+                self._draw_bar(
+                    (start, pos[1] + 2),
+                    shield_health, Controller.SHIELD_HEALTH,
+                    SHIELD_FILLED, SHIELD_EMPTY
+                )
 
             # Render bot
             self._draw_multiline_text((bot_x, bot_y), ASCII_BOTS[i % len(ASCII_BOTS)])
@@ -210,6 +221,15 @@ class Visualizer:
             except curses.error:
                 pass
 
+    def _draw_info(self, pos):
+        info_text = f"""
+    Autorun: {'on' if self.autorun else 'off'}
+    Space - Toggle autorun
+      A   - Previous turn
+      D   - Next turn
+        """
+        self._draw_multiline_text(pos, info_text)
+
     def _draw_bar(self, pos, cur, max, color_filled, color_empty):
         """
         Render a progress bar
@@ -239,9 +259,11 @@ class Visualizer:
         Initialize predefined terminal colors
         """
         curses.use_default_colors()
-        curses.init_pair(HEALTH_FILLED, curses.COLOR_WHITE, curses.COLOR_RED)
-        curses.init_pair(HEALTH_EMPTY, curses.COLOR_WHITE, curses.COLOR_WHITE)
+        curses.init_pair(HEALTH_FILLED, -1, curses.COLOR_RED)
+        curses.init_pair(HEALTH_EMPTY, -1, curses.COLOR_WHITE)
         curses.init_pair(LOG_TEXT, curses.COLOR_RED, -1)
+        curses.init_pair(SHIELD_FILLED, -1, curses.COLOR_BLUE)
+        curses.init_pair(SHIELD_EMPTY, -1, curses.COLOR_WHITE)
 
     def _curses_main(self, scr, callback):
         """
@@ -251,7 +273,7 @@ class Visualizer:
         self.scr = scr
         curses.halfdelay(4)
         self._init_colors()
-        self.clear()
+        self.scr.clear()
 
         try:
             callback()
