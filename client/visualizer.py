@@ -4,11 +4,11 @@ import time
 from controller import Controller
 import threading
 import asyncio
-import sys
 import traceback
+from datetime import datetime
 
+# Delay between automatic updates in seconds
 AUTORUN_DELAY = 0.5
-
 
 # Style constants
 BAR_CELL_WIDTH = 2
@@ -41,9 +41,11 @@ class Visualizer:
         self.loop = asyncio.new_event_loop()
         self.commands = []
         self.command_idx = 0
+        self.autorun = False
+        self.last_autorun = datetime.now()
 
         threading.Thread(target=self.loop.run_forever).start()
-        threading.Thread(target=self._listen_for_input).start()
+        self._handle_input()
 
     def cleanup(self):
         self.loop.call_soon_threadsafe(self.loop.stop)
@@ -95,28 +97,30 @@ class Visualizer:
 
         self.scr.refresh()
 
-    def _handle_input(self, input):
-        if self.command_idx > 0 and input == 97:  # a
-            self.command_idx -= 1
-        if self.command_idx < len(self.commands) - 1 and input == 100:  # d
-            self.command_idx += 1
-
-        if self.commands:
-            self.commands[self.command_idx]()
-            print(self.command_idx)
-
-    def _listen_for_input(self):
-        while True:
-            if not self.scr:
-                continue
+    def _handle_input(self):
+        if self.scr:
             input = self.scr.getch()
-            if input != -1:
-                self._run_task(lambda i: self._handle_input(i), False, input)
+
+            if self.command_idx > 0 and input == 97:  # a
+                self.command_idx -= 1
+            if self.command_idx < len(self.commands) - 1 and input == 100:  # d
+                self.command_idx += 1
+            if input == 32:  # space
+                self.autorun = not self.autorun
+
+            if (self.autorun and
+                (datetime.now() - self.last_autorun).seconds >= AUTORUN_DELAY and
+                self.command_idx < len(self.commands) - 1):
+                self.command_idx += 1
+
+            if self.commands:
+                self.commands[self.command_idx]()
+
+        self._run_task(self._handle_input)
 
     def _submit_command(self, cmd):
         def add():
             self.commands.append(cmd)
-            print("added " + len(self.commands))
         self._run_task(add)
 
     def _run_task(self, task, delay=False, *args):
@@ -228,12 +232,16 @@ class Visualizer:
         """
         curses.curs_set(0)
         self.scr = scr
-        self.scr.nodelay(True)
+        curses.halfdelay(4)
         self._init_colors()
         self.clear()
 
-        callback()
+        try:
+            callback()
+        except:
+            pass
 
+        self.cleanup()
 
 if __name__ == "__main__":
     vis = Visualizer()

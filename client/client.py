@@ -71,27 +71,17 @@ async def consumer(websocket, message):
     else: 
         status = WAITING
 
-async def producer():
-    while True:
-        command = await asyncio.get_event_loop().run_in_executor(None, lambda: input().split())
-
 async def consumer_handler(websocket):
     async for message in websocket:
         await consumer(websocket, message)
-
-async def producer_handler(websocket):
-    while True:
-        message = await producer()
-        await websocket.send(message)
 
 async def handler(websocket):
     #TODO for testing, set player username to the current time so that we don't have to make another copy of competitior script
     await websocket.send(json.dumps({"type": "login", "user": username}))
 
     consumer_task = asyncio.create_task(consumer_handler(websocket))
-    producer_task = asyncio.create_task(producer_handler(websocket))
     done, pending = await asyncio.wait(
-        [consumer_task, producer_task],
+        [consumer_task],
         return_when=asyncio.FIRST_COMPLETED,
     )
     for task in pending:
