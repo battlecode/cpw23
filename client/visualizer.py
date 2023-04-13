@@ -2,6 +2,11 @@ import curses
 from curses.textpad import rectangle
 import time
 from controller import Controller
+import threading
+import asyncio
+import sys
+
+AUTORUN_DELAY = 0.5
 
 
 # Style constants
@@ -37,6 +42,15 @@ ASCII_BOTS = [
 class Visualizer:
     def __init__(self):
         self.scr = None  # Screen
+        self.loop = asyncio.new_event_loop()
+        self.commands = []
+        self.command_idx = 0
+
+        threading.Thread(target=self.loop.run_forever).start()
+        threading.Thread(target=self._listen_for_input).start()
+
+    def cleanup(self):
+        self.loop.call_soon_threadsafe(self.loop.stop)
 
     def run(self, callback):
         """
@@ -53,7 +67,10 @@ class Visualizer:
         """
         Clear the terminal screen
         """
-        self.scr.clear()
+        self._submit_command(lambda: self.scr.clear())
+
+    def render_game_temp(self, state):
+        self._submit_command(lambda: self.render_game(state))
 
     def render_game(self, state):
         """
@@ -62,7 +79,6 @@ class Visualizer:
         Args:
             state: Game state as defined in server/server.py
         """
-        # rectangle(self.scr, 5, 5, 10, 10)
         self._draw_team(
             (5, 5),
             state["bots"],
@@ -77,6 +93,37 @@ class Visualizer:
         )
 
         self.scr.refresh()
+
+    def _handle_input(self, input):
+        if self.command_idx > 0 and input == 97:  # a
+            self.command_idx -= 1
+        if self.command_idx < len(self.commands) - 1 and input == 100:  # d
+            self.command_idx += 1
+
+        if self.commands:
+            self.commands[self.command_idx]()
+            print(self.command_idx)
+
+    def _listen_for_input(self):
+        while True:
+            if not self.scr:
+                continue
+            input = self.scr.getch()
+            if input != -1:
+                self._run_task(lambda i: self._handle_input(i), False, input)
+
+    def _submit_command(self, cmd):
+        def add():
+            self.commands.append(cmd)
+            print("added " + len(self.commands))
+        self._run_task(add)
+
+    def _run_task(self, task, delay=False, *args):
+        async def run_coro():
+            if delay:
+                await asyncio.sleep(AUTORUN_DELAY)
+            task(*args)
+        asyncio.run_coroutine_threadsafe(run_coro(), self.loop)
 
     def _get_shield_health(self, actions, opp_actions, bot_idx):
         # Ensure bot actually shielded
@@ -172,6 +219,7 @@ class Visualizer:
         """
         curses.curs_set(0)
         self.scr = scr
+        self.scr.nodelay(True)
         self._init_colors()
         self.clear()
 
