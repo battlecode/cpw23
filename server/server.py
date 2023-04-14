@@ -117,6 +117,7 @@ When a game begins, send
 {
     "type": "begin_game",
     "game_id": an uuid for this game
+    "op_name": opponent's username
     "bots": [[bot 1 health, bot 1 ammo, error_code], [bot 2 health, bot 2 ammo, error]...]
     "op_bots": [[bot 1 health, bot 1 ammo], [bot 2 health, bot 2 ammo]...]
     "op_actions": [{"type":"none"} for num_bots]

@@ -20,6 +20,8 @@ HEALTH_EMPTY = 2
 LOG_TEXT = 3
 SHIELD_FILLED = 4
 SHIELD_EMPTY = 5
+NAME_TEXT = 6
+AMMO_TEXT = 7
 
 ASCII_BOT_SIZE = (6, 3)
 ASCII_BOTS = ["""
@@ -83,7 +85,7 @@ class Visualizer:
 
         if(state["type"] == 'begin_game'):
             self._draw_log(
-                (5, 10), 
+                (5, 15), 
                 "NEW GAME",
                 curses.A_BOLD
             )
@@ -92,13 +94,15 @@ class Visualizer:
                 (5, 10),
                 state["bots"],
                 state["actions"],
-                state["op_actions"]
+                state["op_actions"],
+                state["name"]
             )
             self._draw_team(
-                (5, 23),
+                (5, 25),
                 state["op_bots"],
                 state["op_actions"],
-                state["actions"]
+                state["actions"],
+                state["op_name"]
             )
             self._draw_log(
                 (5, 30), 
@@ -227,7 +231,7 @@ class Visualizer:
         except curses.error:
             pass
 
-    def _draw_team(self, pos, bots, actions, opp_actions):
+    def _draw_team(self, pos, bots, actions, opp_actions, name):
         start_x = pos[0]
         for i, (bot, action) in enumerate(zip(bots, actions)):
             # Health bar
@@ -263,19 +267,32 @@ class Visualizer:
                 action_text = f"Launching at\n{action['target']} w/ {action['strength']} ammo\n"
             else:
                 action_text = "\nShielding\n"
-
             action_x = middle - max([len(text) for text in action_text.split('\n')]) // 2
             action_y = bot_y - 3
-
             self._draw_multiline_text((action_x, action_y), action_text)
 
             # Bot ammo
             ammo_text = f"Bot Ammo: {bot[1]}"
             ammo_x = middle - len(ammo_text)//2
             ammo_y = bot_y - 1
-            self._draw_multiline_text((ammo_x, ammo_y), ammo_text)
+            self._draw_multiline_text(
+                (ammo_x, ammo_y),
+                ammo_text,
+                curses.color_pair(AMMO_TEXT)
+            )
 
             start_x = end_x + BOT_SPACING
+
+        # Username
+        middle = pos[0] + (end_x - pos[0]) // 2
+        cleaned = name.strip().replace("\n", "")
+        name_x = middle - len(cleaned) // 2
+        name_y = action_y - 2
+        self._draw_multiline_text(
+            (name_x, name_y),
+            cleaned,
+            curses.color_pair(NAME_TEXT) | curses.A_BOLD
+        )
 
     def _draw_log(self, pos, text, args=0):
         # get console width curses
@@ -343,6 +360,8 @@ class Visualizer:
         curses.init_pair(LOG_TEXT, curses.COLOR_RED, -1)
         curses.init_pair(SHIELD_FILLED, -1, curses.COLOR_BLUE)
         curses.init_pair(SHIELD_EMPTY, -1, curses.COLOR_WHITE)
+        curses.init_pair(NAME_TEXT, curses.COLOR_CYAN, -1)
+        curses.init_pair(AMMO_TEXT, curses.COLOR_YELLOW, -1)
 
     def _curses_main(self, scr, callback):
         """

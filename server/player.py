@@ -17,11 +17,12 @@ class Player:
     async def send_message(self, message):
         await self.websocket.send(message)
 
-    async def send_begin_message(self, game_id, bots, op_bots):
+    async def send_begin_message(self, game_id, bots, op_bots, op_name):
         print('sent begin msg to ', self.username)
         await self.websocket.send(json.dumps({
             "type": "begin_game",
             "game_id": game_id,
+            "op_name": op_name,
             "bots": bots,
             "op_bots": op_bots,
             "errors": [-1 for i in range(len(bots))], 
@@ -184,14 +185,15 @@ class GameController:
             # send game begin messages to each player
             try:
                 await self.player1.send_begin_message(
-                    self.id, self.game.p1_bots, self.game.p2_bots)
+                    self.id, self.game.p1_bots, self.game.p2_bots, self.player2.username
+                )
             except:
                 print('begin error', self.player1.username)
                 self.errored_players = (self.player1.username,)
                 return
             try:
                 await self.player2.send_begin_message(
-                    self.id, self.game.p2_bots, self.game.p1_bots
+                    self.id, self.game.p2_bots, self.game.p1_bots, self.player1.username
                 )
             except:
                 print('begin error', self.player2.username)
