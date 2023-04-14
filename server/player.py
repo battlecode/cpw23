@@ -271,9 +271,9 @@ class GameController:
         # send game updates
         game_updates = await asyncio.gather(
             self.player1.send_game_update(self.id, len(self.history)-1,
-                self.game.p1_bots, self.game.p2_bots, player1_actions, self.game.p1_errors),
+                self.game.p1_bots, self.game.p2_bots, player1_actions, player2_actions, self.game.p1_errors),
             self.player2.send_game_update(self.id, len(self.history)-1,
-                self.game.p2_bots, self.game.p1_bots, player2_actions, self.game.p2_errors),
+                self.game.p2_bots, self.game.p1_bots, player2_actions, player1_actions, self.game.p2_errors),
             return_exceptions=True
         )
         if isinstance(game_updates[0], Exception):
