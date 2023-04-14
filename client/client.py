@@ -50,12 +50,12 @@ async def consumer(websocket, message):
     elif event['type'] == 'begin_game':
         if ENABLE_PRINT:
             print('beginning game', event)
-        visualizer.render_game_temp(event)
+        visualizer.render_game(event, "begin")
         await begin_game(websocket, event)
     elif event["type"] == "game_update" and event['game_id'] == game_id:
         if ENABLE_PRINT:
             print('game update', event)
-        visualizer.render_game_temp(event | {"actions": last_actions})
+        visualizer.render_game(event | {"actions": last_actions}, "update")
         status = PLAYING
         def parse_round_errors(e):
             error_codes = [-1 for _ in range(len(event["op_bots"]))]
@@ -70,7 +70,7 @@ async def consumer(websocket, message):
         status = WAITING
         if ENABLE_PRINT:
             print(f"Game over. Winner: {event['winner']}, Errors: {event['errors']}")
-        visualizer.render_game_temp(event)
+        visualizer.render_game(event, "end")
     else: 
         status = WAITING
 

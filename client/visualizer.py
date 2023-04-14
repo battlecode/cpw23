@@ -67,12 +67,12 @@ class Visualizer:
         """
         Clear the terminal screen
         """
-        self._submit_command(lambda: self.scr.clear())
+        self._submit_command(lambda: self.scr.clear(), "clear")
 
-    def render_game_temp(self, state):
-        self._submit_command(lambda: self.render_game(state))
+    def render_game(self, state, tag):
+        self._submit_command(lambda: self._render_game_internal(state), tag)
 
-    def render_game(self, state):
+    def _render_game_internal(self, state):
         """
         Renders a current game state
 
@@ -107,7 +107,7 @@ class Visualizer:
             )
         elif(state["type"] == 'game_over'):
             self._draw_log(
-                (5, 10), 
+                (5, 15), 
                 "GAME OVER. WINNER = " + state["winner"]
                 if state["winner"] is not None else "GAME OVER. TIE",
                 curses.A_BOLD
@@ -115,16 +115,70 @@ class Visualizer:
         self._draw_info((60, 0))
         self.scr.refresh()
 
+    def _seek(self, tag, amount, forwards):
+        if amount == 0:
+            return
+
+        def check():
+            nonlocal amount
+            if self.commands[self.command_idx][0] == tag:
+                amount -= 1
+            if amount == 0:
+                return True
+            return False
+
+        og_idx = self.command_idx
+        if forwards:
+            while self.command_idx < len(self.commands) - 1:
+                self.command_idx += 1
+                if check():
+                    return
+        else:
+            while self.command_idx > 0:
+                self.command_idx -= 1
+                if check():
+                    return
+
+        # Reset if no tag was found
+        self.command_idx = og_idx
+
     def _update(self):
         if self.scr:
             input = self.scr.getch()
 
             if self.command_idx > 0 and input == 97:  # a
                 self.command_idx -= 1
-            if self.command_idx < len(self.commands) - 1 and input == 100:  # d
+            elif self.command_idx < len(self.commands) - 1 and input == 100:  # d
                 self.command_idx += 1
-            if input == 32:  # space
+            elif input == 32:  # space
                 self.autorun = not self.autorun
+            elif input == 115 and self.commands:  # s
+                # Seek to start of game which means 1 start tag if we are in the middle
+                # or zero if we are at the start
+                self._seek(
+                    "begin",
+                    0 if self.commands[self.command_idx][0] == "begin" else 1,
+                    False
+                )
+            elif input == 101 and self.commands:  # e
+                # Seek to end of game which means 1 end tag if we are in the middle
+                # or zero if we are at the end
+                self._seek(
+                    "end",
+                    0 if self.commands[self.command_idx][0] == "end" else 1,
+                    True
+                )
+            elif input == 110:  # n
+                self._seek("begin", 1, True)
+            elif input == 112 and self.commands:  # p
+                # Seek back to previous game, which means passing over 2 begin tags
+                # if we are in the middle of a game or 1 if we are exactly at the
+                # start
+                self._seek(
+                    "begin",
+                    1 if self.commands[self.command_idx][0] == "begin" else 2,
+                    False
+                )
 
             if (self.autorun and
                 (datetime.now() - self.last_autorun).seconds >= AUTORUN_DELAY and
@@ -132,7 +186,7 @@ class Visualizer:
                 self.command_idx += 1
 
             if self.commands:
-                self.commands[self.command_idx]()
+                self.commands[self.command_idx][1]()
             else:
                 self.scr.clear()
                 self._draw_info((0, 0))
@@ -140,9 +194,9 @@ class Visualizer:
 
         self._run_task(self._update)
 
-    def _submit_command(self, cmd):
+    def _submit_command(self, cmd, tag):
         def add():
-            self.commands.append(cmd)
+            self.commands.append((tag, cmd))
         self._run_task(add)
 
     def _run_task(self, task, delay=False, *args):
@@ -248,6 +302,10 @@ class Visualizer:
     Space - Toggle autorun
       A   - Previous turn
       D   - Next turn
+      P   - Seek to previous game
+      N   - Seek to next game
+      S   - Seek to start of current game
+      E   - Seek to end of current game
         """
         self._draw_multiline_text(pos, info_text)
 
