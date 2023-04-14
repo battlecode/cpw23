@@ -14,11 +14,13 @@ ENABLE_PRINT = False
 status = WAITING
 game_id = None
 competitor = None
-username = str(time.time())
 op_username = ""
 game_history = []
 visualizer = Visualizer()
 exceptions = ""
+
+async def cleanup(websocket):
+    websocket.close()
 
 async def begin_game(websocket, event):
     if ENABLE_PRINT:
@@ -52,9 +54,8 @@ async def consumer(websocket, message):
     event = json.loads(message)
 
     if event["type"] == "login" and not event['success']:
-        websocket.close()
-        if ENABLE_PRINT:
-            print(f'The username "{username}" is already in use. Please use a different username.')
+        visualizer.render_error(f'The username "{Competitor.username}" is already in use. Please quit and use a different username.')
+        await cleanup(websocket)
     elif event['type'] == 'begin_game':
         if ENABLE_PRINT:
             print('beginning game', event)
@@ -64,7 +65,7 @@ async def consumer(websocket, message):
         if ENABLE_PRINT:
             print('game update', event)
         visualizer.render_game(
-            event | { "name": username, "op_name": op_username, "exceptions": exceptions},
+            event | { "name": Competitor.username, "op_name": op_username, "exceptions": exceptions},
             "update"
         )
         status = PLAYING
@@ -90,8 +91,7 @@ async def consumer_handler(websocket):
         await consumer(websocket, message)
 
 async def handler(websocket):
-    #TODO for testing, set player username to the current time so that we don't have to make another copy of competitior script
-    await websocket.send(json.dumps({"type": "login", "user": username}))
+    await websocket.send(json.dumps({"type": "login", "user": Competitor.username}))
 
     consumer_task = asyncio.create_task(consumer_handler(websocket))
     done, pending = await asyncio.wait(

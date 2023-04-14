@@ -75,6 +75,9 @@ class Visualizer:
     def render_game(self, state, tag):
         self._submit_command(lambda: self._render_game_internal(state), tag)
 
+    def render_error(self, error):
+        self._submit_command(lambda: self._render_error_internal(error), "error")
+
     def _render_game_internal(self, state):
         """
         Renders a current game state
@@ -124,6 +127,15 @@ class Visualizer:
                 curses.A_BOLD
             )
         self._draw_info((60, 0))
+        self.scr.refresh()
+
+    def _render_error_internal(self, message):
+        self.scr.clear()
+        self._draw_log(
+            (5, 5), 
+            message,
+            curses.color_pair(ERROR_TEXT) | curses.A_BOLD
+        )
         self.scr.refresh()
 
     def _seek(self, tag, amount, forwards):

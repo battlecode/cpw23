@@ -2,14 +2,14 @@ import random
 
 
 class Competitor:
+    username = "user" # Change this!
 
     def __init__(self):
-        self.username = "jimmy"
         self.round_number = 0
 
     def play_turn(self, controller):
-        ammo = controller.get_my_bot_ammo(0)
         self.round_number += 1
+        ammo = controller.get_my_bot_ammo(0)
         if ammo == 0: 
             controller.load(0)
             controller.load(1)
