@@ -17,27 +17,27 @@ class Controller:
 
     def load(self, bot):
         """
-        Takes load action, adds one to ammo of bot
+        Load ammo into one of your bots
         Args:
-            bot (int): index of bot
+            bot (int): index of bot to load ammo into
         """
         self.actions[bot] = {"type": "load"}
 
-    def launch(self, bot, target_bot, attack_strength):
+    def attack(self, bot, target_bot, attack_strength):
         """
-        Takes launch action
+        Attack an opponent bot.
         Args:
-            bot (int): index of bot
+            bot (int): index of your bot
             target_bot (int): index of opponents target bot
-            attack_strenght (int): amount of ammo to attack with
+            attack_strength (int): amount of ammo to attack with
         """
         self.actions[bot] = {"type": "launch", "target": target_bot, "strength": attack_strength}
 
     def shield(self, bot):
         """
-        Takes shield action
+        Shield one of your bots
         Args:
-            bot (int): index of bot
+            bot (int): index of bot that is performing the shield action
         """
         self.actions[bot] = {"type": "shield"}
     
@@ -46,7 +46,7 @@ class Controller:
 
     def get_my_bot_health(self, bot):
         """
-        Returns health for teams bot with index bot
+        Returns the health of your team's bot
         Args:
             bot (int): index of bot
         Returns:
@@ -56,7 +56,7 @@ class Controller:
     
     def get_my_bot_ammo(self, bot):
         """
-        Returns ammo for teams bot with index bot
+        Returns the amount of ammo your team's bot has
         Args:
             bot (int): index of bot
         Returns:
@@ -66,7 +66,7 @@ class Controller:
 
     def get_opponent_bot_health(self, bot):
         """
-        Returns health for opponents bot with index bot
+        Returns the health of an opponent bot
         Args:
             bot (int): index of bot
         Returns:
@@ -76,7 +76,7 @@ class Controller:
     
     def get_opponent_bot_ammo(self, bot):
         """
-        Returns ammo for opponents bot with index bot
+        Returns the amount of ammo an opponent bot has
         Args:
             bot (int): index of bot
         Returns:
