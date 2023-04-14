@@ -29,6 +29,7 @@ def change_mode(mode):
             print(f"{mode} enabled!")
         server_mode = mode
 
+
 # a dict mapping player usernames to Player objects
 players = dict()
 
@@ -79,7 +80,7 @@ async def main():
     global server_mode
     async with websockets.serve(handler, "", 8001):
         while True:
-            await asyncio.sleep(10)
+            await asyncio.sleep(45)
             # determine which mode we are in, then run appropriate code
             check_console()
             if server_mode == SERVER_MODES[1]:
@@ -103,23 +104,29 @@ if __name__ == "__main__":
 
 
 # TODO: validation with schema
-# SUBMIT_TURN_SCHEMA = {
-#     "type": "object",
-#     "properties": { 
-#         "type": {"type": "string"},
-#         "game_id": {"type": "string"},
-#         "turn": {"type": "number"},
-#         "actions": {
-#             "type": "array",
-#             "items": { # validate each item of the actions arr
-#                 "type": "object",
-#                 "properties": {
-#                     "type": 
-#                 }
-#             }
-#         }        
-#     }
-# }
+SUBMIT_TURN_SCHEMA = {
+    "type": "object",
+    "properties": { 
+        "type": {"type": "string"},
+        "game_id": {"type": "string"},
+        "turn": {"type": "number"},
+        "actions": {
+            # "actions": [
+            #     {"type": "none/load/launch/shield", "target": number, "strength": number},
+            #     ...for each bot in order
+            # ]
+            "type": "array",
+            "items": { # validate each item of the actions arr
+                "type": "object",
+                "properties": {
+                    "type": { "type": "string", "pattern": "^none|load|launch|shield$"},
+                    "target": { "type": "integer", "minimum": 0, "maximum": 2 },
+                    "strength": { 'type': "integer" }
+                }
+            }
+        }        
+    }
+}
 
 '''
 Websocket communication
@@ -162,6 +169,7 @@ When a turn ends, send game state:
     "turn": the turn number that just occurred,
     "bots": [[bot 1 health, bot 1 ammo, error_code], [bot 2 health, bot 2 ammo, error]...]
     "op_bots": [[bot 1 health, bot 1 ammo], [bot 2 health, bot 2 ammo]...],
+    "actions": [{"type": "none/load/launch/shield", "target": number, "strength": number} for each bot in order],
     "op_actions": [{"type": "none/load/launch/shield", "target": number, "strength": number} for each bot in order],
     "errors": [[error code, bot number], [error code, bot number]...]
 }
