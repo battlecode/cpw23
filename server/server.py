@@ -4,19 +4,20 @@ import json
 from player import Player, GameController
 from autoscrim import autoscrim 
 from tournament_runner import run_tourney
+import os.path
 
 # current console command
 SERVER_MODES = ("autoscrim", "tournament")
 server_mode = SERVER_MODES[0]
 
-def check_console():
+def check_mode():
     """
     Checks our command line for input, and runs associated code if 
     appropriate. Check README for commands.
     """
-    prompt = input()
-    if prompt in SERVER_MODES:
-        change_mode(prompt)
+    for mode in SERVER_MODES:
+        if os.path.isfile(mode):
+            change_mode(mode)
 
 def change_mode(mode):
     """
@@ -82,22 +83,12 @@ async def main():
         while True:
             await asyncio.sleep(45)
             # determine which mode we are in, then run appropriate code
-            check_console()
+            check_mode()
             if server_mode == SERVER_MODES[1]:
                 await run_tourney(players)
             # we want to be in autoscrim mode by default
             else:
                 await autoscrim(players)
-
-            # TODO: remove this testing code
-            # if len(players) >= 2:
-            #     # try running a game
-            #     ppl = list(players.values())[:2]
-            #     controller = GameController(ppl[0], ppl[1])
-            #     print('playing game between', ppl[0].username, ppl[1].username)
-            #     await controller.play_game()
-            #     print(controller.get_results())
-
 
 if __name__ == "__main__":
     asyncio.run(main())
