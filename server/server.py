@@ -74,7 +74,8 @@ async def handler(websocket):
     except Exception as e:
         print(f'{username} disconnected with Exception', e)
     finally:
-        del players[username]
+        if username in players:
+            del players[username]
 
 async def main():
     global players
