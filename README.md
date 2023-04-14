@@ -12,9 +12,9 @@ In each round, all bots simultaneously act out one of three choices:
 * Attack an opponent with some amount of ammo
 * Load one ammo
 * Shield
+    - Gain a temporary 3 health for this turn. Attacks performed on this bot will first drain shield health and then bot health.
 
-After the round ends, bots with 0 health 
-Battlecode-o7 is a turn based game; each player's bots maek 
+After the round ends, bots with 0 health can take no further actions.
 
 # Installation Instructions
 
