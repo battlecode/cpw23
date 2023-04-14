@@ -9,8 +9,8 @@ async def run_tourney(players):
     Prints out the ranking of players in a formatted fashion.
     """
     # if no players, print that to console
-    if not players:
-        print("No players present, so no tournament can run!")
+    if len(players) < 2:
+        print(f"{len(players)} players present, so no tournament can run!")
         return
     match_schedule = generate_schedule(players)
     # player rankings: { player_id: { "played":, "won":, "lost":, "tied":, } }
