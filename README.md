@@ -28,6 +28,6 @@ Make sure pip is installed by running `python -m pip --version` or `pip --versio
 Clone or download this repository and open the folder in your terminal
 * Ask for help if you're confused on how to do this!
 
-In the repository folder, run `pip install -r requirements.txt"
+In the repository folder, run `pip install -r requirements.txt`
 
 Now, you can get started writing code! Open client/competitor.py for an example bot.
