@@ -3,7 +3,6 @@ import json
 import jsonschema
 import websockets
 from websockets.exceptions import ConnectionClosed
-from server import SUBMIT_TURN_SCHEMA
 import asyncio
 import uuid
 
@@ -281,3 +280,29 @@ class GameController:
         if isinstance(game_updates[1], Exception):
             errors += (self.player2.username, )
         return errors
+
+
+# TODO: validation with schema
+SUBMIT_TURN_SCHEMA = {
+    "type": "object",
+    "properties": { 
+        "type": {"type": "string"},
+        "game_id": {"type": "string"},
+        "turn": {"type": "number"},
+        "actions": {
+            # "actions": [
+            #     {"type": "none/load/launch/shield", "target": number, "strength": number},
+            #     ...for each bot in order
+            # ]
+            "type": "array",
+            "items": { # validate each item of the actions arr
+                "type": "object",
+                "properties": {
+                    "type": { "type": "string", "pattern": "^none|load|launch|shield$"},
+                    "target": { "type": "integer", "minimum": 0, "maximum": 2 },
+                    "strength": { 'type': "integer" }
+                }
+            }
+        }        
+    }
+}
