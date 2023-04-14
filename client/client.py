@@ -59,7 +59,7 @@ async def consumer(websocket, message):
         if ENABLE_PRINT:
             print('game update', event)
         visualizer.render_game(
-            event | {"actions": last_actions, "name": username, "op_name": op_username},
+            event | {"actions": copy.deepcopy(last_actions), "name": username, "op_name": op_username},
             "update"
         )
         status = PLAYING
