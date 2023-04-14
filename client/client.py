@@ -102,8 +102,8 @@ async def handler(websocket):
         task.cancel()
 
 async def main():
-    #uri = "ws://cpw.battlecode.org:8001/"
-    uri = "ws://localhost:8001/"
+    uri = "ws://cpw.battlecode.org:8001/"
+    #uri = "ws://localhost:8001/"
     async with websockets.connect(uri, ssl=None) as websocket:
         await handler(websocket)
 
