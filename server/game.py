@@ -83,7 +83,7 @@ class Game:
         assert len(p1_actions) == NUM_BOTS
         assert len(p2_actions) == NUM_BOTS
 
-        #Second player is submitting their actions, so process game round
+        # process game round
         p1_errors, p2_errors = self.process_turn(p1_actions, p2_actions)
         self.status = TURN_OVER
         self.check_victory()
