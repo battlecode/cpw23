@@ -22,6 +22,7 @@ SHIELD_FILLED = 4
 SHIELD_EMPTY = 5
 NAME_TEXT = 6
 AMMO_TEXT = 7
+ERROR_TEXT = 8
 
 ASCII_BOT_SIZE = (6, 3)
 ASCII_BOTS = ["""
@@ -109,6 +110,12 @@ class Visualizer:
                 str(state),
                 curses.color_pair(LOG_TEXT) | curses.A_BOLD
             )
+            if state["exceptions"] != "":
+                self._draw_log(
+                    (5, 42),
+                    state["exceptions"],
+                    curses.color_pair(ERROR_TEXT) | curses.A_BOLD
+                )
         elif(state["type"] == 'game_over'):
             self._draw_log(
                 (5, 15), 
@@ -273,8 +280,10 @@ class Visualizer:
                 action_text = f"\nLoading\n"
             elif action["type"] == "launch":
                 action_text = f"Launching at\n{action['target']} w/ {action['strength']} ammo\n"
-            else:
+            elif action["type"] == "shield":
                 action_text = "\nShielding\n"
+            else:
+                action_text = "\nNone\n"
             action_x = middle - max([len(text) for text in action_text.split('\n')]) // 2
             action_y = bot_y - 3
             if is_alive:
@@ -367,11 +376,12 @@ class Visualizer:
         curses.use_default_colors()
         curses.init_pair(HEALTH_FILLED, -1, curses.COLOR_RED)
         curses.init_pair(HEALTH_EMPTY, -1, curses.COLOR_WHITE)
-        curses.init_pair(LOG_TEXT, curses.COLOR_RED, -1)
+        curses.init_pair(LOG_TEXT, curses.COLOR_WHITE, -1)
         curses.init_pair(SHIELD_FILLED, -1, curses.COLOR_BLUE)
         curses.init_pair(SHIELD_EMPTY, -1, curses.COLOR_WHITE)
         curses.init_pair(NAME_TEXT, curses.COLOR_CYAN, -1)
         curses.init_pair(AMMO_TEXT, curses.COLOR_YELLOW, -1)
+        curses.init_pair(ERROR_TEXT, curses.COLOR_RED, -1)
 
     def _curses_main(self, scr, callback):
         """

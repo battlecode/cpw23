@@ -9,6 +9,7 @@ class Competitor:
 
     def play_turn(self, controller):
         ammo = controller.get_my_bot_ammo(0)
+        self.round_number += 1
         if ammo == 0: 
             controller.load(0)
             controller.load(1)

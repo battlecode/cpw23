@@ -3,6 +3,7 @@ import websockets
 import json
 import time
 import copy
+import traceback
 from competitor import Competitor
 from controller import Controller
 from visualizer import Visualizer
@@ -17,6 +18,7 @@ username = str(time.time())
 op_username = ""
 game_history = []
 visualizer = Visualizer()
+exceptions = ""
 
 async def begin_game(websocket, event):
     if ENABLE_PRINT:
@@ -28,8 +30,14 @@ async def begin_game(websocket, event):
     await play_and_submit_turn(websocket, game_id, 0, event['bots'], event['op_bots'], event['op_actions'], event['errors'], competitor)
 
 async def play_and_submit_turn(websocket, game_id, turn, my_bots, op_bots, op_actions, errors, competitor):
+    global exceptions
     controller = Controller(turn, my_bots, op_bots, op_actions, errors)
-    competitor.play_turn(controller)
+    try:
+        competitor.play_turn(controller)
+        exceptions = ""
+    except Exception:
+        exceptions = traceback.format_exc().replace("\n", " ")
+
     if ENABLE_PRINT:
         print('submitting turn', controller.actions)
     await websocket.send(json.dumps({
@@ -56,7 +64,7 @@ async def consumer(websocket, message):
         if ENABLE_PRINT:
             print('game update', event)
         visualizer.render_game(
-            event | { "name": username, "op_name": op_username},
+            event | { "name": username, "op_name": op_username, "exceptions": exceptions},
             "update"
         )
         status = PLAYING
@@ -94,7 +102,8 @@ async def handler(websocket):
         task.cancel()
 
 async def main():
-    uri = "ws://cpw.battlecode.org:8001/"
+    #uri = "ws://cpw.battlecode.org:8001/"
+    uri = "ws://localhost:8001/"
     async with websockets.connect(uri, ssl=None) as websocket:
         await handler(websocket)
 
