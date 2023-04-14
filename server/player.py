@@ -29,7 +29,7 @@ class Player:
             "op_actions": [{"type":"none"} for i in range(len(bots))]
         }))
     
-    async def send_game_update(self, game_id, turn, bots, op_bots, op_actions, action_errors):
+    async def send_game_update(self, game_id, turn, bots, op_bots, actions, op_actions, action_errors):
         print('turn', turn, 'sent game update to', self.username, 
         'with value', bots, op_bots, action_errors)
         await self.websocket.send(json.dumps({
@@ -38,7 +38,8 @@ class Player:
             "turn": turn,
             "bots": bots,
             "op_bots": op_bots,
-            "op_actions": op_actions, 
+            "actions": actions,
+            "op_actions": op_actions,
             "errors": action_errors
         }))
 
@@ -269,9 +270,9 @@ class GameController:
         # send game updates
         game_updates = await asyncio.gather(
             self.player1.send_game_update(self.id, len(self.history)-1,
-                self.game.p1_bots, self.game.p2_bots, copied_player2_actions, self.game.p1_errors),
+                self.game.p1_bots, self.game.p2_bots, copied_player1_actions, copied_player2_actions, self.game.p1_errors),
             self.player2.send_game_update(self.id, len(self.history)-1,
-                self.game.p2_bots, self.game.p1_bots, copied_player1_actions, self.game.p2_errors),
+                self.game.p2_bots, self.game.p1_bots, copied_player2_actions, copied_player1_actions, self.game.p2_errors),
             return_exceptions=True
         )
         if isinstance(game_updates[0], Exception):

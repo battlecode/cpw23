@@ -17,7 +17,6 @@ username = str(time.time())
 op_username = ""
 game_history = []
 visualizer = Visualizer()
-last_actions = []
 
 async def begin_game(websocket, event):
     if ENABLE_PRINT:
@@ -29,7 +28,6 @@ async def begin_game(websocket, event):
     await play_and_submit_turn(websocket, game_id, 0, event['bots'], event['op_bots'], event['op_actions'], event['errors'], competitor)
 
 async def play_and_submit_turn(websocket, game_id, turn, my_bots, op_bots, op_actions, errors, competitor):
-    global last_actions
     controller = Controller(turn, my_bots, op_bots, op_actions, errors)
     competitor.play_turn(controller)
     if ENABLE_PRINT:
@@ -39,7 +37,6 @@ async def play_and_submit_turn(websocket, game_id, turn, my_bots, op_bots, op_ac
         'game_id': game_id, 
         'turn': turn,
         "actions": controller.actions}))
-    last_actions = copy.deepcopy(controller.actions)
 
 async def consumer(websocket, message):
     #This is sub-optimal, but there is no easy way around it
@@ -59,7 +56,7 @@ async def consumer(websocket, message):
         if ENABLE_PRINT:
             print('game update', event)
         visualizer.render_game(
-            event | {"actions": copy.deepcopy(last_actions), "name": username, "op_name": op_username},
+            event | { "name": username, "op_name": op_username},
             "update"
         )
         status = PLAYING
