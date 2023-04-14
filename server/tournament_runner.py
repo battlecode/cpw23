@@ -1,5 +1,6 @@
 import asyncio
 from player import GameController
+import random
 
 async def run_tourney(players):
     """
@@ -66,7 +67,7 @@ def generate_players(players):
     """
     Given a player dict, return a list of all player ids.
     """
-    return [ player for player in players ]
+    return random.shuffle([ player for player in players ])
 
 
 async def tourney_game(competitors):
@@ -119,7 +120,7 @@ def rank_sort(rankings):
     pts/game ties are broken by # of wins, then head to head result,
     then a coin flip.
     """
-    new_ranks = { player_id: {"win_pct": 0, "won": rankings[player_id]["won"],} for player_id in rankings }
+    new_ranks = { player_id: {"win_pct": 0, "won": rankings[player_id]["won"],} for player_id in generate_players(rankings) }
     for player_id, results in rankings.items():
         new_ranks[player_id]["win_pct"] = int(
             ((3*results["won"]) + 
