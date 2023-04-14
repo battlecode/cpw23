@@ -21,11 +21,11 @@ async def run_tourney(players):
     waiting_list = []
     # make a list of our game runnables
     for match in match_schedule:
-        waiting_list = asyncio.gather(*waiting_list, tourney_game((players[match[0]], players[match[1]])))
+        waiting_list.append(tourney_game((players[match[0]], players[match[1]])))
     # run all games
     if waiting_list:
         # collect results
-        results = await waiting_list
+        results = await asyncio.gather(*waiting_list)
         # apply results to rankings
         for result in results:
             handle_outcome(result, rankings)
