@@ -111,4 +111,4 @@ def rank_sort(rankings):
             results["played"] * 10000
         ) / 10000
     sorted_rank = sorted(new_ranks.items(), key=lambda x: (x[1]["win_pct"], x[1]["won"]), reverse=True)
-    return sorted_rank
+    return [ rank[0] for rank in sorted_rank ]
