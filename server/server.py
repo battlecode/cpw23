@@ -14,13 +14,9 @@ def check_console():
     Checks our command line for input, and runs associated code if 
     appropriate. Check README for commands.
     """
-    console_commands = {
-        SERVER_MODES[0]: change_mode(SERVER_MODES[0]),
-        SERVER_MODES[1]: change_mode(SERVER_MODES[1]),
-    }
     prompt = input()
-    if prompt in console_commands:
-        console_commands[prompt]
+    if prompt in SERVER_MODES:
+        change_mode(prompt)
 
 def change_mode(mode):
     """
@@ -29,6 +25,8 @@ def change_mode(mode):
     # set our file-wide server mode
     global server_mode
     if mode in SERVER_MODES:
+        if mode != server_mode:
+            print(f"{mode} enabled!")
         server_mode = mode
 
 # a dict mapping player usernames to Player objects
@@ -78,6 +76,7 @@ async def handler(websocket):
 
 async def main():
     global players
+    global server_mode
     async with websockets.serve(handler, "", 8001):
         while True:
             await asyncio.sleep(10)

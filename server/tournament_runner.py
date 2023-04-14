@@ -7,6 +7,10 @@ async def run_tourney(players):
     \nArgs: players, a dictionary keyed on player ids
     Prints out the ranking of players in a formatted fashion.
     """
+    # if no players, print that to console
+    if not players:
+        print("No players present, so no tournament can run!")
+        return
     match_schedule = generate_schedule(players)
     # player rankings: { player_id: { "played":, "won":, "lost":, "tied":, } }
     rankings = { 
@@ -17,7 +21,7 @@ async def run_tourney(players):
     waiting_list = []
     # make a list of our game runnables
     for match in match_schedule:
-        waiting_list = asyncio.gather(*waiting_list, tourney_game(match))
+        waiting_list = asyncio.gather(*waiting_list, tourney_game((players[match[0]], players[match[1]])))
     # run all games
     if waiting_list:
         # collect results
@@ -85,8 +89,8 @@ def handle_outcome(match, rankings):
     Given a GameController that is completed, mutates a rankings 
     dict keyed on player_id to reflect the outcome. 
     """
-    p1 = match.player1
-    p2 = match.player2
+    p1 = match.player1.username
+    p2 = match.player2.username
     results = match.get_results()
     # handle win/loss outcome
     winner = results[0]
