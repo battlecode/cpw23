@@ -8,7 +8,6 @@ import time
 async def autoscrim(players):
     """
     Runs autoscrims between all the players passed in.
-
     Arguments:
     players: a dictionary mapping player usernames (strings) to Player objects
     """

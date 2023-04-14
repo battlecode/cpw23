@@ -1,9 +1,11 @@
 import random
 
+
 class Competitor:
 
     def __init__(self):
         self.username = "jimmy"
+        self.round_number = 0
 
     def play_turn(self, controller):
         ammo = controller.get_my_bot_ammo(0)
