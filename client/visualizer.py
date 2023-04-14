@@ -234,6 +234,8 @@ class Visualizer:
     def _draw_team(self, pos, bots, actions, opp_actions, name):
         start_x = pos[0]
         for i, (bot, action) in enumerate(zip(bots, actions)):
+            is_alive = bot[0] > 0
+
             # Health bar
             end_x = self._draw_bar(
                 (start_x, pos[1]),
@@ -258,7 +260,8 @@ class Visualizer:
                 )
 
             # Render bot
-            self._draw_multiline_text((bot_x, bot_y), ASCII_BOTS[i % len(ASCII_BOTS)])
+            if is_alive:
+                self._draw_multiline_text((bot_x, bot_y), ASCII_BOTS[i % len(ASCII_BOTS)])
 
             # Bot actions
             if action["type"] == "load":
@@ -269,17 +272,19 @@ class Visualizer:
                 action_text = "\nShielding\n"
             action_x = middle - max([len(text) for text in action_text.split('\n')]) // 2
             action_y = bot_y - 3
-            self._draw_multiline_text((action_x, action_y), action_text)
+            if is_alive:
+                self._draw_multiline_text((action_x, action_y), action_text)
 
             # Bot ammo
             ammo_text = f"Bot Ammo: {bot[1]}"
             ammo_x = middle - len(ammo_text)//2
             ammo_y = bot_y - 1
-            self._draw_multiline_text(
-                (ammo_x, ammo_y),
-                ammo_text,
-                curses.color_pair(AMMO_TEXT)
-            )
+            if is_alive:
+                self._draw_multiline_text(
+                    (ammo_x, ammo_y),
+                    ammo_text,
+                    curses.color_pair(AMMO_TEXT)
+                )
 
             start_x = end_x + BOT_SPACING
 

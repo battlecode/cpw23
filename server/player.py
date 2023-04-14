@@ -29,7 +29,7 @@ class Player:
             "op_actions": [{"type":"none"} for i in range(len(bots))]
         }))
     
-    async def send_game_update(self, game_id, turn, bots, op_bots, op_actions, action_errors):
+    async def send_game_update(self, game_id, turn, bots, op_bots, actions, op_actions, action_errors):
         print('turn', turn, 'sent game update to', self.username, 
         'with value', bots, op_bots, action_errors)
         await self.websocket.send(json.dumps({
@@ -38,7 +38,8 @@ class Player:
             "turn": turn,
             "bots": bots,
             "op_bots": op_bots,
-            "op_actions": op_actions, 
+            "actions": actions,
+            "op_actions": op_actions,
             "errors": action_errors
         }))
 
