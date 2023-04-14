@@ -207,7 +207,12 @@ class Visualizer:
         async def run_coro():
             if delay:
                 await asyncio.sleep(AUTORUN_DELAY)
-            task(*args)
+            try:
+                task(*args)
+            except Exception as e:
+                print("Error running task!")
+                print(traceback.format_exc())
+                
         asyncio.run_coroutine_threadsafe(run_coro(), self.loop)
 
     def _get_shield_health(self, actions, opp_actions, bot_idx):
