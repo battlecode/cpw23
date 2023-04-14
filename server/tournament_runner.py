@@ -7,25 +7,26 @@ async def run_tourney(players):
     \nArgs: players, a dictionary keyed on player ids
     \nReturns: a list of player ids in descending rank order
     """
-    player_ids = generate_players(players)
-    match_schedule = generate_schedule(player_ids)
-    # player rankings: { player_id: { "played":, "won":, "lost":, } }
+    match_schedule = generate_schedule(players)
+    # player rankings: { player_id: { "played":, "won":, "lost":, "tied":, } }
     rankings = { 
         player: { "played": 0, "won": 0, "lost": 0, "tied": 0, } 
-        for player in player_ids 
+        for player in players 
     }
     # intitialize list of awaiting games
     waiting_list = []
     # make a list of our game runnables
     for match in match_schedule:
-        waiting_list = asyncio.gather(*waiting_list, tourney_game(match, rankings))
+        waiting_list = asyncio.gather(*waiting_list, tourney_game(match))
     # run all games
     if waiting_list:
-        await waiting_list
-    # sort first on "won", then on "tied"
-    rank_sort = sorted(rankings.items(), key=lambda x:x[1]["won"])
-    rank_sort = sorted(rank_sort, lambda x:x[1]["tied"])
-    return [ rank[0] for rank in rank_sort ]
+        # collect results
+        results = await waiting_list
+        # apply results to rankings
+        for result in results:
+            handle_outcome(result, rankings)
+    # return our list of player_ids, sorted by rank
+    return rank_sort(rankings)
 
 
 def generate_schedule(players):
@@ -52,7 +53,7 @@ def generate_players(players):
     return [ player for player in players ]
 
 
-async def tourney_game(competitors, rankings):
+async def tourney_game(competitors):
     """
     Given a tuple of competitors and a rankings dict, run a game between them.
     Mutate rankings with each players' match results.
@@ -63,8 +64,8 @@ async def tourney_game(competitors, rankings):
     # run our game
     match = GameController(p1, p2)
     await match.play_game()
-    # apply the results of the game to our rankings
-    handle_outcome(match, rankings)
+    # return match object
+    return match
 
 
 def handle_outcome(match, rankings):
@@ -75,9 +76,6 @@ def handle_outcome(match, rankings):
     p1 = match.player1
     p2 = match.player2
     results = match.get_results()
-    # if we have no results (game not over), throw error
-    # games should always finish before the outcome is handled
-    assert results, f"Game between {p1}, {p2} Not Finished!"
     # handle win/loss outcome
     winner = results[0]
     rankings[p1]["played"] += 1
@@ -92,3 +90,25 @@ def handle_outcome(match, rankings):
         # apply results
         rankings[winner]["won"] += 1
         rankings[loser]["lost"] += 1
+
+
+def rank_sort(rankings):
+    """
+    Given a rankings dict and match list, return a list of player ids in
+    rank order based on the following criteria:
+     - Win = 3 pts.
+     - Tie = 1 pt.
+     - Loss = 0 pts.\n
+    Divided by games played, creating a pts/game ranking.\n
+    pts/game ties are broken by # of wins, then head to head result,
+    then a coin flip.
+    """
+    new_ranks = { player_id: {"win_pct": 0, "won": rankings[player_id]["won"],} for player_id in rankings }
+    for player_id, results in rankings.items():
+        new_ranks[player_id]["win_pct"] = int(
+            ((3*results["won"]) + 
+            (1*results["tied"])) /
+            results["played"] * 10000
+        ) / 10000
+    sorted_rank = sorted(new_ranks.items(), key=lambda x: (x[1]["win_pct"], x[1]["won"]), reverse=True)
+    return sorted_rank
