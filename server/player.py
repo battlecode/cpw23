@@ -247,8 +247,8 @@ class GameController:
         # receive turn actions
         # [[p1 actions], [p2 actions]]
         actions = await asyncio.gather(
-                self.player1.wait_for_player_turn(self.game_id, 3),
-                self.player2.wait_for_player_turn(self.game_id, 3),
+                self.player1.wait_for_player_turn(self.id, 3),
+                self.player2.wait_for_player_turn(self.id, 3),
                 return_exceptions=True)
         errors = ()
         if isinstance(actions[0], Exception):

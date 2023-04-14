@@ -55,7 +55,7 @@ async def main():
     async with websockets.serve(handler, "", 8001):
         while True:
             await asyncio.sleep(45)
-            autoscrim(players)
+            await autoscrim(players)
 
 
 if __name__ == "__main__":
