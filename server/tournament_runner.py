@@ -5,7 +5,7 @@ async def run_tourney(players):
     """
     Runs a complete round-robin tournament.
     \nArgs: players, a dictionary keyed on player ids
-    \nReturns: a list of player ids in descending rank order
+    Prints out the ranking of players in a formatted fashion.
     """
     match_schedule = generate_schedule(players)
     # player rankings: { player_id: { "played":, "won":, "lost":, "tied":, } }
@@ -25,8 +25,20 @@ async def run_tourney(players):
         # apply results to rankings
         for result in results:
             handle_outcome(result, rankings)
-    # return our list of player_ids, sorted by rank
-    return rank_sort(rankings)
+    # print our list of player_ids, sorted by rank
+    new_ranks = rank_sort(rankings)
+    print_results(new_ranks)
+
+
+def print_results(rankings):
+    """
+    Args: rankings, a list of player ids in descending rank order.\n
+    Prints out the ranking of players in a formatted fashion.
+    """
+    # Print tournament rankings
+    print(f"Tournament Rankings:")
+    for ranking, player in enumerate(rankings):
+        print(f"{ranking+1}: {player}")
 
 
 def generate_schedule(players):

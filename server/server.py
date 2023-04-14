@@ -3,6 +3,33 @@ import websockets
 import json
 from player import Player, GameController
 from autoscrim import autoscrim 
+from tournament_runner import run_tourney
+
+# current console command
+SERVER_MODES = ("autoscrim", "tournament")
+server_mode = SERVER_MODES[0]
+
+def check_console():
+    """
+    Checks our command line for input, and runs associated code if 
+    appropriate. Check README for commands.
+    """
+    console_commands = {
+        SERVER_MODES[0]: change_mode(SERVER_MODES[0]),
+        SERVER_MODES[1]: change_mode(SERVER_MODES[1]),
+    }
+    prompt = input()
+    if prompt in console_commands:
+        console_commands[prompt]
+
+def change_mode(mode):
+    """
+    Given a valid server mode, toggle server to run in that mode.
+    """
+    # set our file-wide server mode
+    global server_mode
+    if mode in SERVER_MODES:
+        server_mode = mode
 
 # a dict mapping player usernames to Player objects
 players = dict()
@@ -54,8 +81,13 @@ async def main():
     async with websockets.serve(handler, "", 8001):
         while True:
             await asyncio.sleep(10)
-            # TODO: uncomment this later 
-            await autoscrim(players)
+            # determine which mode we are in, then run appropriate code
+            check_console()
+            if server_mode == SERVER_MODES[1]:
+                await run_tourney(players)
+            # we want to be in autoscrim mode by default
+            else:
+                await autoscrim(players)
 
             # TODO: remove this testing code
             # if len(players) >= 2:
@@ -65,7 +97,7 @@ async def main():
             #     print('playing game between', ppl[0].username, ppl[1].username)
             #     await controller.play_game()
             #     print(controller.get_results())
-            
+
 
 if __name__ == "__main__":
     asyncio.run(main())
