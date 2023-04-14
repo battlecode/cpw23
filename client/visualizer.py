@@ -80,25 +80,38 @@ class Visualizer:
             state: Game state as defined in server/server.py
         """
         self.scr.clear()
-        self._draw_team(
-            (5, 10),
-            state["bots"],
-            state["actions"],
-            state["op_actions"]
-        )
-        self._draw_team(
-            (5, 23),
-            state["op_bots"],
-            state["op_actions"],
-            state["actions"]
-        )
-        self._draw_log(
-            (5, 30), 
-            str(state),
-            curses.color_pair(LOG_TEXT) | curses.A_BOLD
-        )
-        self._draw_info((60, 0))
 
+        if(state["type"] == 'begin_game'):
+            self._draw_log(
+                (5, 10), 
+                "NEW GAME",
+                curses.A_BOLD
+            )
+        elif(state["type"] == 'game_update'):
+            self._draw_team(
+                (5, 10),
+                state["bots"],
+                state["actions"],
+                state["op_actions"]
+            )
+            self._draw_team(
+                (5, 23),
+                state["op_bots"],
+                state["op_actions"],
+                state["actions"]
+            )
+            self._draw_log(
+                (5, 30), 
+                str(state),
+                curses.color_pair(LOG_TEXT) | curses.A_BOLD
+            )
+        elif(state["type"] == 'game_over'):
+            self._draw_log(
+                (5, 10), 
+                "GAME OVER. WINNER = " + str(state["winner"]),
+                curses.A_BOLD
+            )
+        self._draw_info((60, 0))
         self.scr.refresh()
 
     def _update(self):

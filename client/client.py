@@ -50,6 +50,7 @@ async def consumer(websocket, message):
     elif event['type'] == 'begin_game':
         if ENABLE_PRINT:
             print('beginning game', event)
+        visualizer.render_game_temp(event)
         await begin_game(websocket, event)
     elif event["type"] == "game_update" and event['game_id'] == game_id:
         if ENABLE_PRINT:
@@ -69,6 +70,7 @@ async def consumer(websocket, message):
         status = WAITING
         if ENABLE_PRINT:
             print(f"Game over. Winner: {event['winner']}, Errors: {event['errors']}")
+        visualizer.render_game_temp(event)
     else: 
         status = WAITING
 
