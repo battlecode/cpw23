@@ -31,3 +31,7 @@ Clone or download this repository and open the folder in your terminal
 In the repository folder, run `pip install -r requirements.txt`
 
 Now, you can get started writing code! Open client/competitor.py for an example bot.
+
+# Running your code
+
+In the repository folder, run `python client/client.py`
