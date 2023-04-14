@@ -67,7 +67,9 @@ def generate_players(players):
     """
     Given a player dict, return a list of all player ids.
     """
-    return random.shuffle([ player for player in players ])
+    player_ids = [ player for player in players ]
+    random.shuffle(player_ids)
+    return player_ids
 
 
 async def tourney_game(competitors):
