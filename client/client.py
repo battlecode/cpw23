@@ -2,6 +2,7 @@ import asyncio
 import websockets
 import json
 import time
+import copy
 from competitor import Competitor
 from controller import Controller
 from visualizer import Visualizer
@@ -38,7 +39,7 @@ async def play_and_submit_turn(websocket, game_id, turn, my_bots, op_bots, op_ac
         'game_id': game_id, 
         'turn': turn,
         "actions": controller.actions}))
-    last_actions = controller.actions
+    last_actions = copy.deepcopy(controller.actions)
 
 async def consumer(websocket, message):
     #This is sub-optimal, but there is no easy way around it
