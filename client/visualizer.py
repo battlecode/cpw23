@@ -43,7 +43,7 @@ class Visualizer:
         self.loop = asyncio.new_event_loop()
         self.commands = []
         self.command_idx = 0
-        self.autorun = False
+        self.autorun = True
         self.last_autorun = datetime.now()
 
         threading.Thread(target=self.loop.run_forever).start()
@@ -108,7 +108,8 @@ class Visualizer:
         elif(state["type"] == 'game_over'):
             self._draw_log(
                 (5, 10), 
-                "GAME OVER. WINNER = " + str(state["winner"]),
+                "GAME OVER. WINNER = " + state["winner"]
+                if state["winner"] is not None else "GAME OVER. TIE",
                 curses.A_BOLD
             )
         self._draw_info((60, 0))
