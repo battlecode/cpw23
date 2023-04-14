@@ -3,11 +3,12 @@ NUM_BOTS = 3
 
 class Controller:
 
-    def __init__(self, turn, my_bots, op_bots):
+    def __init__(self, turn, my_bots, op_bots, op_actions):
         self.turn = turn
         self.actions = [{"type": "none"} for _ in range(NUM_BOTS)]
         self.player_state = my_bots
         self.opponent_healths = op_bots
+        self.opponent_actions = op_actions
 
     def reset(self):
         self.actions = [{"type": "none"} for _ in range(NUM_BOTS)]
@@ -32,3 +33,15 @@ class Controller:
 
     def get_opponent_bot_health(self, bot):
         return self.opponent_healths(bot)
+    
+    def get_opponent_previous_action(self, bot):
+        """
+        Returns the action the opponent bot at index bot took last round.
+        Action is none for the first turn or if the specified bot is dead.
+        Args:
+            bot (int): index of bot
+        Returns:
+            dict of form {"type": "none/load/launch/shield", "target": number, "strength": number}
+            For actions other than launch, there will be no target or strength key.
+        """
+        return self.opponent_actions[bot]

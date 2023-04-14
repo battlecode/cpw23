@@ -54,16 +54,17 @@ async def main():
     async with websockets.serve(handler, "", 8001):
         while True:
             await asyncio.sleep(10)
-            # TODO: uncomment this later autoscrim(players)
+            # TODO: uncomment this later 
+            await autoscrim(players)
 
             # TODO: remove this testing code
-            if len(players) >= 2:
-                # try running a game
-                ppl = list(players.values())[:2]
-                controller = GameController(ppl[0], ppl[1])
-                print('playing game between', ppl[0].username, ppl[1].username)
-                await controller.play_game()
-                print(controller.get_results())
+            # if len(players) >= 2:
+            #     # try running a game
+            #     ppl = list(players.values())[:2]
+            #     controller = GameController(ppl[0], ppl[1])
+            #     print('playing game between', ppl[0].username, ppl[1].username)
+            #     await controller.play_game()
+            #     print(controller.get_results())
             
 
 if __name__ == "__main__":
@@ -119,6 +120,7 @@ When a game begins, send
     "game_id": an uuid for this game
     "bots": [[bot 1 health, bot 1 ammo, error_code], [bot 2 health, bot 2 ammo, error]...]
     "op_bots": [[bot 1 health, bot 1 ammo], [bot 2 health, bot 2 ammo]...]
+    "op_actions": [{"type":"none"} for num_bots]
 }
 
 When a turn ends, send game state:
@@ -128,6 +130,7 @@ When a turn ends, send game state:
     "turn": the turn number that just occurred,
     "bots": [[bot 1 health, bot 1 ammo, error_code], [bot 2 health, bot 2 ammo, error]...]
     "op_bots": [[bot 1 health, bot 1 ammo], [bot 2 health, bot 2 ammo]...],
+    "op_actions": [{"type": "none/load/launch/shield", "target": number, "strength": number} for each bot in order],
     "errors": [[error code, bot number], [error code, bot number]...]
 }
 

@@ -6,24 +6,6 @@ from websockets.exceptions import ConnectionClosed
 import asyncio
 import uuid
 
-class PlayerAlreadyInGameError(TypeError):
-    """
-    Represents if a game was requested between two players while one of the players was already in a game
-    """
-    pass
-
-class PlayerDisconnectError(ConnectionClosed):
-    """
-    Represents a player error (disconnect)
-    """
-    pass
-
-class PlayerTimeoutError(RuntimeError):
-    """
-    Represents a player timing out error 
-    """
-    pass
-
 MAX_MESSAGE_SIZE = 2000
 
 class Player:
@@ -41,10 +23,11 @@ class Player:
             "type": "begin_game",
             "game_id": game_id,
             "bots": bots,
-            "op_bots": op_bots
+            "op_bots": op_bots,
+            "op_actions": [{"type":"none"} for i in range(len(bots))]
         }))
     
-    async def send_game_update(self, game_id, turn, bots, op_bots, action_errors):
+    async def send_game_update(self, game_id, turn, bots, op_bots, op_actions, action_errors):
         print('turn', turn, 'sent game update to', self.username, 
         'with value', bots, op_bots, action_errors)
         await self.websocket.send(json.dumps({
@@ -53,6 +36,7 @@ class Player:
             "turn": turn,
             "bots": bots,
             "op_bots": op_bots,
+            "op_actions": op_actions, 
             "action_errors": action_errors
         }))
 
@@ -144,8 +128,10 @@ class GameController:
             'actions': None,
         })]
 
+        self.game_ended = False
+
         self.winner = None
-        self.player_errors = None
+        self.errored_players = None
 
         self.id = str(uuid.uuid4())
 
@@ -154,6 +140,13 @@ class GameController:
         Returns a id unique to this game
         """
         return self.id
+
+    def is_game_over(self):
+        """
+        Returns if the game has ended or not (whether from player disconnect, 
+        timeout, or game tie/win)
+        """
+        return self.game_ended
 
     def get_results(self):
         """
@@ -164,8 +157,8 @@ class GameController:
         the game.
         If the game is not over, return None
         """
-        if self.game.is_game_over():
-            return self.winner, self.player_errors
+        if self.game_ended:
+            return self.winner, self.errored_players
         return None
 
     async def play_game(self):
@@ -178,6 +171,7 @@ class GameController:
         """
         print('playing game')
         # acquire player locks in order
+        # ensures that a player is only in one game at once
         if (self.player1.username < self.player2.username):
             await self.player1.lock.acquire()
             await self.player2.lock.acquire()
@@ -192,7 +186,7 @@ class GameController:
                     self.id, self.game.p1_bots, self.game.p2_bots)
             except:
                 print('begin error', self.player1.username)
-                self.player_errors = (self.player1.username,)
+                self.errored_players = (self.player1.username,)
                 return
             try:
                 await self.player2.send_begin_message(
@@ -200,21 +194,24 @@ class GameController:
                 )
             except:
                 print('begin error', self.player2.username)
-                self.player_errors = (self.player2.username,)
+                self.errored_players = (self.player2.username,)
                 # if player 2 errors but player 1 didn't error, we tell player 1
                 # that the game is over
-                await self.player1.send_game_over(self.get_id(), None, self.player_errors, self.history)
+                await self.player1.send_game_over(self.get_id(), None, self.errored_players, self.history)
                 return
             
             # run the game
             while not self.game.is_game_over():
                 errors = await self.step_turn()
                 if len(errors) > 0:
-                    self.player_errors = errors
-                    if len(errors) == 1 and errors[0] == self.player1.username: # player 1 errored
+                    self.errored_players = errors
+                    if len(errors) == 1 and errors[0] == self.player1.username: 
+                        # player 1 errored, so player 2 wins
                         self.winner = self.player2.username
-                    elif len(errors) == 1: # player 2 errorred
+                    elif len(errors) == 1: 
+                        # player 2 errored, so player 1 wins
                         self.winner = self.player1.username
+                    # if len(errors) then it's a tie b/c both errored
                     break
             
             winner_code = self.game.get_winner()
@@ -224,9 +221,12 @@ class GameController:
                 self.winner = self.player2.username
             
             # send game end messages to each player
-            await self.player1.send_game_over(self.get_id(), self.winner, self.player_errors, self.history)
-            await self.player2.send_game_over(self.get_id(), self.winner, self.player_errors, self.history)
+            await self.player1.send_game_over(self.get_id(), self.winner, self.errored_players, self.history)
+            await self.player2.send_game_over(self.get_id(), self.winner, self.errored_players, self.history)
+        except Exception as e:
+            print(f'error in game {self.get_id()}, {e}')
         finally:
+            self.game_ended = True
             self.player1.lock.release()
             self.player2.lock.release()
     
@@ -260,12 +260,15 @@ class GameController:
             'actions': actions
         }))
 
+        #copy actions to prevent self.history being mutated by competitors
+        copied_player1_actions = [d.copy() for d in actions[0]]
+        copied_player2_actions = [d.copy() for d in actions[1]]
         # send game updates
         game_updates = await asyncio.gather(
             self.player1.send_game_update(self.id, len(self.history)-1,
-                self.game.p1_bots, self.game.p2_bots, self.game.p1_errors),
+                self.game.p1_bots, self.game.p2_bots, copied_player2_actions, self.game.p1_errors),
             self.player2.send_game_update(self.id, len(self.history)-1,
-                self.game.p2_bots, self.game.p1_bots, self.game.p2_errors),
+                self.game.p2_bots, self.game.p1_bots, copied_player1_actions, self.game.p2_errors),
             return_exceptions=True
         )
         if isinstance(game_updates[0], Exception):
