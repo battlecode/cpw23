@@ -13,6 +13,7 @@ status = WAITING
 game_id = None
 competitor = None
 username = str(time.time())
+op_username = ""
 game_history = []
 visualizer = Visualizer()
 last_actions = []
@@ -20,9 +21,10 @@ last_actions = []
 async def begin_game(websocket, event):
     if ENABLE_PRINT:
         print('received begin message', event)
-    global game_id, competitor
+    global game_id, competitor, op_username
     game_id = event['game_id']
     competitor = Competitor()
+    op_username = event['op_name']
     await play_and_submit_turn(websocket, game_id, 0, event['bots'], event['op_bots'], event['op_actions'], event['errors'], competitor)
 
 async def play_and_submit_turn(websocket, game_id, turn, my_bots, op_bots, op_actions, errors, competitor):
@@ -55,7 +57,10 @@ async def consumer(websocket, message):
     elif event["type"] == "game_update" and event['game_id'] == game_id:
         if ENABLE_PRINT:
             print('game update', event)
-        visualizer.render_game(event | {"actions": last_actions}, "update")
+        visualizer.render_game(
+            event | {"actions": last_actions, "name": username, "op_name": op_username},
+            "update"
+        )
         status = PLAYING
         def parse_round_errors(e):
             error_codes = [-1 for _ in range(len(event["op_bots"]))]
