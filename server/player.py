@@ -60,7 +60,7 @@ class Player:
         except:
             pass
 
-    async def wait_for_player_turn(self, timeout):
+    async def wait_for_player_turn(self, game_id, timeout):
         """
         Waits for a player to send their turn actions. 
         
@@ -75,14 +75,14 @@ class Player:
             player_actions = None
             while player_actions is None:
                 response = await self.websocket.recv()
-                player_actions = self.parse_turn_message(response)
+                player_actions = self.parse_turn_message(game_id, response)
                 if player_actions is None:
                     await self.send_invalid_message()
             return player_actions
 
         return await asyncio.wait_for(receive_helper(), timeout)
     
-    def parse_turn_message(self, turn_message):
+    def parse_turn_message(self, game_id, turn_message):
         """
         Returns a list of actions for this player, or None if the input is invalid.
         turn_message is expected to be a json string as described in server.py7
@@ -93,8 +93,10 @@ class Player:
             return None
         try:
             result = json.loads(turn_message)
+            jsonschema.validate(turn_message, SUBMIT_TURN_SCHEMA)
             if ('type' in result and 'actions' in result
-                and result['type'] == 'turn'):
+                and result['type'] == 'turn' and 
+                result['game_id'] == game_id):
                 return result['actions']
         except:
             return None
@@ -246,8 +248,8 @@ class GameController:
         # receive turn actions
         # [[p1 actions], [p2 actions]]
         actions = await asyncio.gather(
-                self.player1.wait_for_player_turn(2),
-                self.player2.wait_for_player_turn(2),
+                self.player1.wait_for_player_turn(self.id, 3),
+                self.player2.wait_for_player_turn(self.id, 3),
                 return_exceptions=True)
         errors = ()
         if isinstance(actions[0], Exception):
@@ -256,6 +258,8 @@ class GameController:
             errors += (self.player2.username, )
         if len(errors) > 0:
             return errors
+        
+        player1_actions, player2_actions = actions
 
         # update the actual game
         self.game.submit_turn(*actions)
@@ -264,15 +268,12 @@ class GameController:
             'actions': actions
         }))
 
-        #copy actions to prevent self.history being mutated by competitors
-        copied_player1_actions = [d.copy() for d in actions[0]]
-        copied_player2_actions = [d.copy() for d in actions[1]]
         # send game updates
         game_updates = await asyncio.gather(
             self.player1.send_game_update(self.id, len(self.history)-1,
-                self.game.p1_bots, self.game.p2_bots, copied_player1_actions, copied_player2_actions, self.game.p1_errors),
+                self.game.p1_bots, self.game.p2_bots, player1_actions, self.game.p1_errors),
             self.player2.send_game_update(self.id, len(self.history)-1,
-                self.game.p2_bots, self.game.p1_bots, copied_player2_actions, copied_player1_actions, self.game.p2_errors),
+                self.game.p2_bots, self.game.p1_bots, player2_actions, self.game.p2_errors),
             return_exceptions=True
         )
         if isinstance(game_updates[0], Exception):
@@ -280,3 +281,29 @@ class GameController:
         if isinstance(game_updates[1], Exception):
             errors += (self.player2.username, )
         return errors
+
+
+# TODO: validation with schema
+SUBMIT_TURN_SCHEMA = {
+    "type": "object",
+    "properties": { 
+        "type": {"type": "string"},
+        "game_id": {"type": "string"},
+        "turn": {"type": "number"},
+        "actions": {
+            # "actions": [
+            #     {"type": "none/load/launch/shield", "target": number, "strength": number},
+            #     ...for each bot in order
+            # ]
+            "type": "array",
+            "items": { # validate each item of the actions arr
+                "type": "object",
+                "properties": {
+                    "type": { "type": "string", "pattern": "^none|load|launch|shield$"},
+                    "target": { "type": "integer", "minimum": 0, "maximum": 2 },
+                    "strength": { 'type': "integer" }
+                }
+            }
+        }        
+    }
+}

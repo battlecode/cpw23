@@ -4,6 +4,7 @@ import json
 from player import Player, GameController
 from autoscrim import autoscrim 
 
+
 # a dict mapping player usernames to Player objects
 players = dict()
 
@@ -53,41 +54,38 @@ async def main():
     global players
     async with websockets.serve(handler, "", 8001):
         while True:
-            await asyncio.sleep(10)
-            # TODO: uncomment this later autoscrim(players)
+            await asyncio.sleep(45)
+            await autoscrim(players)
 
-            # TODO: remove this testing code
-            if len(players) >= 2:
-                # try running a game
-                ppl = list(players.values())[:2]
-                controller = GameController(ppl[0], ppl[1])
-                print('playing game between', ppl[0].username, ppl[1].username)
-                await controller.play_game()
-                print(controller.get_results())
-            
 
 if __name__ == "__main__":
     asyncio.run(main())
 
 
 # TODO: validation with schema
-# SUBMIT_TURN_SCHEMA = {
-#     "type": "object",
-#     "properties": { 
-#         "type": {"type": "string"},
-#         "game_id": {"type": "string"},
-#         "turn": {"type": "number"},
-#         "actions": {
-#             "type": "array",
-#             "items": { # validate each item of the actions arr
-#                 "type": "object",
-#                 "properties": {
-#                     "type": 
-#                 }
-#             }
-#         }        
-#     }
-# }
+SUBMIT_TURN_SCHEMA = {
+    "type": "object",
+    "properties": { 
+        "type": {"type": "string"},
+        "game_id": {"type": "string"},
+        "turn": {"type": "number"},
+        "actions": {
+            # "actions": [
+            #     {"type": "none/load/launch/shield", "target": number, "strength": number},
+            #     ...for each bot in order
+            # ]
+            "type": "array",
+            "items": { # validate each item of the actions arr
+                "type": "object",
+                "properties": {
+                    "type": { "type": "string", "pattern": "^none|load|launch|shield$"},
+                    "target": { "type": "integer", "minimum": 0, "maximum": 2 },
+                    "strength": { 'type': "integer" }
+                }
+            }
+        }        
+    }
+}
 
 '''
 Websocket communication
