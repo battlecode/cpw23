@@ -87,13 +87,15 @@ class Player:
         Returns a list of actions for this player, or None if the input is invalid.
         turn_message is expected to be a json string as described in server.py7
         """
-        # TODO here: implement validation with jsonschema
         if len(turn_message) > MAX_MESSAGE_SIZE:
             # ignore overly large json responses
             return None
         try:
             result = json.loads(turn_message)
-            jsonschema.validate(turn_message, SUBMIT_TURN_SCHEMA)
+            try:
+                jsonschema.validate(result, SUBMIT_TURN_SCHEMA)
+            except Exception as e:
+                print(e)
             if ('type' in result and 'actions' in result
                 and result['type'] == 'turn' and 
                 result['game_id'] == game_id):
@@ -304,6 +306,6 @@ SUBMIT_TURN_SCHEMA = {
                     "strength": { 'type': "integer" }
                 }
             }
-        }        
+        }    
     }
 }

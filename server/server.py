@@ -61,32 +61,6 @@ async def main():
 if __name__ == "__main__":
     asyncio.run(main())
 
-
-# TODO: validation with schema
-SUBMIT_TURN_SCHEMA = {
-    "type": "object",
-    "properties": { 
-        "type": {"type": "string"},
-        "game_id": {"type": "string"},
-        "turn": {"type": "number"},
-        "actions": {
-            # "actions": [
-            #     {"type": "none/load/launch/shield", "target": number, "strength": number},
-            #     ...for each bot in order
-            # ]
-            "type": "array",
-            "items": { # validate each item of the actions arr
-                "type": "object",
-                "properties": {
-                    "type": { "type": "string", "pattern": "^none|load|launch|shield$"},
-                    "target": { "type": "integer", "minimum": 0, "maximum": 2 },
-                    "strength": { 'type': "integer" }
-                }
-            }
-        }        
-    }
-}
-
 '''
 Websocket communication
 
