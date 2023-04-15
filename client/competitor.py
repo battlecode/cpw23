@@ -12,8 +12,10 @@ class Competitor:
         self.attack_likelihood = [0] * 3
         self.block_likelihood = [0] * 3
         self.load_likelihood = [0] * 3
+        print("Running")
 
     def play_turn(self, controller):
+        print("Playing turn")
         self.round_number += 1
 
         total_ammo = 0
@@ -28,9 +30,9 @@ class Competitor:
 
         summed_likelihood = [0] * 3
         for i in range(3):
-            summed_likelihood[i] = attack_likelihood[i] + block_likelihood[i] + load_likelihood[i]
+            summed_likelihood[i] = self.attack_likelihood[i] + self.block_likelihood[i] + self.load_likelihood[i]
 
-        weakest_target = ((1 << 30), -1)
+        weakest_target = (1000, -1)
         for i in range(3):
             enemy_health = controller.get_opponent_bot_health(i)
             if enemy_health < weakest_target[0]:
