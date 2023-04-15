@@ -16,7 +16,7 @@ game_id = None
 competitor = None
 op_username = ""
 game_history = []
-visualizer = Visualizer()
+visualizer = None #Visualizer()
 exceptions = ""
 
 async def cleanup(websocket):
@@ -48,26 +48,34 @@ async def play_and_submit_turn(websocket, game_id, turn, my_bots, op_bots, op_ac
         'turn': turn,
         "actions": controller.actions}))
 
+def print_state(state):
+    print(f"""
+    Your bots: {", ".join([f"A:{v[1]}, H:{v[0]}" for v in state["bots"]])}
+    {state["op_name"]}'s bots: {", ".join([f"A:{v[1]}, H:{v[0]}" for v in state["op_bots"]])}
+    Your moves: {state["actions"]}
+    {state["op_name"]}'s moves: {state["op_actions"]}
+    """)
+
 async def consumer(websocket, message):
     #This is sub-optimal, but there is no easy way around it
     global status, competitor, game_id
     event = json.loads(message)
 
     if event["type"] == "login" and not event['success']:
-        visualizer.render_error(f'The username "{Competitor.username}" is already in use. Please quit and use a different username.')
+        #visualizer.render_error(f'The username "{Competitor.username}" is already in use. Please quit and use a different username.')
+        print("Change your username!")
         await cleanup(websocket)
     elif event['type'] == 'begin_game':
         if ENABLE_PRINT:
             print('beginning game', event)
-        visualizer.render_game(event, "begin")
+        print("NEW GAME")
+        #visualizer.render_game(event, "begin")
         await begin_game(websocket, event)
     elif event["type"] == "game_update" and event['game_id'] == game_id:
         if ENABLE_PRINT:
             print('game update', event)
-        visualizer.render_game(
-            event | { "name": Competitor.username, "op_name": op_username, "exceptions": exceptions},
-            "update"
-        )
+        state = event | { "name": Competitor.username, "op_name": op_username, "exceptions": exceptions}
+        print_state(state)
         status = PLAYING
         def parse_round_errors(e):
             error_codes = [-1 for _ in range(len(event["op_bots"]))]
@@ -82,7 +90,8 @@ async def consumer(websocket, message):
         status = WAITING
         if ENABLE_PRINT:
             print(f"Game over. Winner: {event['winner']}, Errors: {event['errors']}")
-        visualizer.render_game(event, "end")
+        print("GAME OVER \n\n\n\n")
+        #visualizer.render_game(event, "end")
     else: 
         status = WAITING
 
@@ -108,6 +117,4 @@ async def main():
         await handler(websocket)
 
 if __name__ == "__main__":
-    def execute():
-        asyncio.run(main())
-    visualizer.run(execute)
+    asyncio.run(main())
