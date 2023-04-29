@@ -28,7 +28,7 @@ def process_actions(attacker_actions, attacker_bots, target_actions, target_bots
             elif action["type"] == "load": bot[1] += 1
             elif action["type"] == "launch":
                 target, strength = action["target"], action["strength"]
-                if strength > bot[1]: errors.append((NOT_ENOUGH_AMMO, bot_id))
+                if strength > bot[1] or strength < 0: errors.append((NOT_ENOUGH_AMMO, bot_id))
                 elif not 0 <= target < NUM_BOTS: errors.append((INVALID_TARGET, bot_id))
                 elif target_bots[target][0] == 0: errors.append((DEAD_TARGET, bot_id))
                 else:
